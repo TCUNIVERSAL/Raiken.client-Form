@@ -16,7 +16,6 @@ import {
 } from './form/formState.js';
 import { ErrorSummary, Stepper } from './form/fields.js';
 import { PeopleStep } from './form/PeopleStep.js';
-import { AddressStep } from './form/AddressStep.js';
 import { PropertyStep } from './form/PropertyStep.js';
 import { StampDutyStep } from './form/StampDutyStep.js';
 import { ReviewProblem, ReviewStep } from './form/ReviewStep.js';
@@ -125,21 +124,22 @@ export const ClientIntakeWizard: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     setManualSaveNotice(false);
-  }, [step, partyIndex]);
+  }, [step]);
 
   // ─── Validation ────────────────────────────────────────────────────────────
-  const errorsForStep = (s: StepKey, data: ClientIntakeFormData = formData, pIndex: number = partyIndex): FieldErrors => {
+  const errorsForStep = (s: StepKey, data: ClientIntakeFormData = formData): FieldErrors => {
     switch (s) {
       case 'start':
         return data.roleConfirmed ? {} : { role: 'Please choose whether you are buying or selling.' };
       case 'people': {
-        const p = data.parties[pIndex];
-        return prefixKeys(validatePartyDetails(p), `${p.id}-`);
+        // Validate ALL parties' details AND addresses together
+        let allErrors: FieldErrors = {};
+        data.parties.forEach(p => {
+          allErrors = { ...allErrors, ...prefixKeys(validatePartyDetails(p), `${p.id}-`) };
+          allErrors = { ...allErrors, ...prefixKeys(validatePartyAddress(p), `${p.id}-addr-`) };
+        });
+        return allErrors;
       }
-      case 'addresses':
-        return data.parties.reduce<FieldErrors>(
-          (acc, p) => ({ ...acc, ...prefixKeys(validatePartyAddress(p), `${p.id}-addr-`) }), {}
-        );
       case 'property':
         return prefixKeys(validateProperty(data), '');
       case 'stampDuty':
@@ -156,8 +156,8 @@ export const ClientIntakeWizard: React.FC = () => {
   // On pages where several people answer the same questions, say whose answer is missing
   const summaryErrors: FieldErrors = {};
   Object.entries(errors).forEach(([key, message]) => {
-    const owner = step === 'addresses' && formData.parties.length > 1
-      ? formData.parties.findIndex(p => key.startsWith(`${p.id}-addr-`))
+    const owner = step === 'people' && formData.parties.length > 1
+      ? formData.parties.findIndex(p => key.startsWith(`${p.id}-`))
       : -1;
     summaryErrors[key] = owner === -1 ? message : `${role} ${owner + 1}: ${message}`;
   });
@@ -170,7 +170,7 @@ export const ClientIntakeWizard: React.FC = () => {
   });
   formData.parties.forEach((p, i) => {
     if (Object.keys(validatePartyAddress(p)).length) {
-      reviewProblems.push({ step: 'addresses', message: `${role} ${i + 1}: the address is missing or incomplete.` });
+      reviewProblems.push({ step: 'people', message: `${role} ${i + 1}: the address is missing or incomplete.` });
     }
   });
   if (Object.keys(validateProperty(formData)).length) {
@@ -207,6 +207,24 @@ export const ClientIntakeWizard: React.FC = () => {
       return { ...prev, parties, partyCount: parties.length };
     });
     selectParty(newIndex);
+  };
+
+  const setPartyCount = (count: number) => {
+    const clamped = Math.max(1, Math.min(MAX_PARTIES, count));
+    saveSoon();
+    setFormData(prev => {
+      let parties = [...prev.parties];
+      if (clamped > parties.length) {
+        // Add parties
+        while (parties.length < clamped) parties.push(createParty());
+      } else if (clamped < parties.length) {
+        // Remove excess parties from the end
+        parties = parties.slice(0, clamped);
+      }
+      // The first person has nobody "above" them to copy from
+      if (parties[0]?.sameAddressAsPrevious) parties[0] = { ...parties[0], sameAddressAsPrevious: false };
+      return { ...prev, parties, partyCount: parties.length };
+    });
   };
 
   const removeParty = (index: number) => {
@@ -256,21 +274,6 @@ export const ClientIntakeWizard: React.FC = () => {
       return;
     }
 
-    if (step === 'people') {
-      if (!returnToReview && partyIndex < formData.parties.length - 1) {
-        saveSoon();
-        selectParty(partyIndex + 1);
-        return;
-      }
-      const incomplete = formData.parties.findIndex(p => Object.keys(validatePartyDetails(p)).length > 0);
-      if (incomplete !== -1) {
-        setPartyIndex(incomplete);
-        setAttempted(a => ({ ...a, people: true }));
-        focusField(Object.keys(errorsForStep('people', formData, incomplete))[0]);
-        return;
-      }
-    }
-
     if (returnToReview) {
       setReturnToReview(false);
       goToStep('review');
@@ -280,13 +283,8 @@ export const ClientIntakeWizard: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (step === 'people' && partyIndex > 0) {
-      saveSoon();
-      selectParty(partyIndex - 1);
-      return;
-    }
     const prev = steps[Math.max(0, stepIndex - 1)];
-    goToStep(prev, prev === 'people' ? formData.parties.length - 1 : 0);
+    goToStep(prev);
   };
 
   const handleSelectRole = (selected: ConveyancingRole) => {
@@ -411,7 +409,6 @@ export const ClientIntakeWizard: React.FC = () => {
   let primaryLabel = 'Next';
   if (isLastStep) primaryLabel = isSubmitting ? 'Sending…' : 'Submit';
   else if (returnToReview) primaryLabel = 'Save and go back to review';
-  else if (step === 'people' && partyIndex < partyCount - 1) primaryLabel = `Next: ${role} ${partyIndex + 2}`;
 
   let saveMessage: React.ReactNode = null;
   if (uploadsInFlight > 0) saveMessage = 'Please wait — a file is still uploading.';
@@ -430,16 +427,12 @@ export const ClientIntakeWizard: React.FC = () => {
           <h1 className="rk-title">
             {step === 'start' && 'Conveyancing client form'}
             {step === 'people' && `${role} details`}
-            {step === 'addresses' && 'Current home addresses'}
             {step === 'property' && 'Property details'}
             {step === 'stampDuty' && 'Stamp duty relief'}
             {step === 'review' && 'Review and confirm'}
           </h1>
           {step === 'start' && (
             <p className="rk-lead">It takes about 10 minutes. Questions marked <span className="rk-req">*</span> are required. Your answers are saved as you go.</p>
-          )}
-          {step === 'people' && partyCount > 1 && (
-            <p className="rk-lead">{role} {partyIndex + 1} of {partyCount}</p>
           )}
         </header>
 
@@ -481,19 +474,12 @@ export const ClientIntakeWizard: React.FC = () => {
             live={liveErrors}
             onSelectParty={selectParty}
             onUpdateParty={updateParty}
+            onSetPartyCount={setPartyCount}
             onAddParty={addParty}
             onRemoveParty={removeParty}
             onAddDocument={addDocument}
             onRemoveDocument={removeDocument}
             onUploadingChange={onUploadingChange}
-          />
-        )}
-
-        {step === 'addresses' && (
-          <AddressStep
-            formData={formData}
-            errors={errors}
-            live={liveErrors}
             onAddressChange={(i: number, patch: Partial<Address>) => setFormData(prev => ({ ...prev, parties: applyAddressChange(prev.parties, i, patch) }))}
             onSameAsAbove={(i: number, checked: boolean) => {
               saveSoon();

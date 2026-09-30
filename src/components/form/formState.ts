@@ -4,20 +4,19 @@ import { todayIso } from '../../utils/validation.js';
 export const MAX_PARTIES = 20;
 
 // ─── Steps ───────────────────────────────────────────────────────────────────
-export type StepKey = 'start' | 'people' | 'addresses' | 'property' | 'stampDuty' | 'review';
+export type StepKey = 'start' | 'people' | 'property' | 'stampDuty' | 'review';
 
 /** Vendors have no stamp duty questions, so their form is one step shorter. */
 export function stepsFor(role: ConveyancingRole): StepKey[] {
   return role === 'Purchaser'
-    ? ['start', 'people', 'addresses', 'property', 'stampDuty', 'review']
-    : ['start', 'people', 'addresses', 'property', 'review'];
+    ? ['start', 'people', 'property', 'stampDuty', 'review']
+    : ['start', 'people', 'property', 'review'];
 }
 
 export function stepTitle(key: StepKey, role: ConveyancingRole): string {
   switch (key) {
     case 'start': return 'Start';
     case 'people': return `${role}s`;
-    case 'addresses': return 'Addresses';
     case 'property': return 'Property';
     case 'stampDuty': return 'Stamp duty';
     case 'review': return 'Review & confirm';

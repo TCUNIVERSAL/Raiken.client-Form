@@ -75,7 +75,7 @@ const PHONE_DIGIT_RULES: Record<string, { min: number; max: number }> = {
 };
 const DEFAULT_PHONE_RULE = { min: 7, max: 15 };
 
-function checkPhone(value: string, countryCode: string = '+61', required = true): string | null {
+export function checkPhone(value: string, countryCode: string = '+61', required = true): string | null {
   if (!value.trim()) return required ? 'Please enter a contact number.' : null;
   if (!/^[\d\s()\-.]+$/.test(value.trim())) return 'Use numbers only, for example 0412 345 678.';
   const digits = value.replace(/[\s()+\-.]/g, '');

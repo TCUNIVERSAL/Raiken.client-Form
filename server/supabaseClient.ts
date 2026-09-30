@@ -64,6 +64,15 @@ export async function saveIntakeToSupabase(intake: {
   finance: any;
   stamp_duty: any;
   id_documents: any[];
+  ownership_type?: string | null;
+  broker_name?: string | null;
+  broker_phone?: string | null;
+  broker_email?: string | null;
+  broker_company?: string | null;
+  how_did_you_hear?: string | null;
+  signature_data?: string | null;
+  phone_country_code?: string | null;
+  [key: string]: any;
 }) {
   const client = getSupabase();
   if (client) {

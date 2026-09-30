@@ -11,16 +11,16 @@ const withAddress = (id: string) => ({
 });
 
 describe('Steps', () => {
-  test('TC-FS-01 purchasers get 6 steps, vendors 5 (no stamp duty)', () => {
-    assert.equal(stepsFor('Purchaser').length, 6);
-    assert.deepEqual(stepsFor('Vendor'), ['start', 'people', 'addresses', 'property', 'review']);
+  test('TC-FS-01 purchasers get 5 steps, vendors 4 (no stamp duty)', () => {
+    assert.equal(stepsFor('Purchaser').length, 5);
+    assert.deepEqual(stepsFor('Vendor'), ['start', 'people', 'property', 'review']);
   });
 
   test('TC-FS-02 saved step numbers map back to the right step, out-of-range values are clamped', () => {
-    assert.equal(stepFromNumber('Purchaser', 5), 'stampDuty');
-    assert.equal(stepFromNumber('Vendor', 5), 'review');
+    assert.equal(stepFromNumber('Purchaser', 4), 'stampDuty');
+    assert.equal(stepFromNumber('Vendor', 4), 'review');
     assert.equal(stepFromNumber('Vendor', 99), 'review');
-    assert.equal(stepToNumber('Purchaser', 'review'), 6);
+    assert.equal(stepToNumber('Purchaser', 'review'), 5);
   });
 });
 

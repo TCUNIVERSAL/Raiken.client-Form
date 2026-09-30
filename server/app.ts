@@ -13,6 +13,7 @@ import {
   abandonOtherDrafts, createDraftSession, FormSessionRecord, getLatestDraft, getSessionById,
   incrementVisitorFormCount, markSessionSubmitted, touchVisitor, updateDraftSession
 } from './sessionStore.js';
+import { checkPhone } from '../src/utils/validation.js';
 
 dotenv.config();
 
@@ -222,6 +223,8 @@ function findMissingRequiredField(formData: any): string | null {
     if (!p?.firstName?.trim() || !p?.lastName?.trim()) return `${who}: full name is required.`;
     if (!p.email || !EMAIL_RE.test(String(p.email).trim())) return `${who}: a valid email is required.`;
     if (!p.mobile?.trim()) return `${who}: a contact number is required.`;
+    const phoneErr = checkPhone(p.mobile, p.phoneCountryCode || '+61');
+    if (phoneErr) return `${who}: ${phoneErr}`;
     if (!p.dob) return `${who}: date of birth is required.`;
     if (!p.residencyStatus) return `${who}: residency status is required.`;
     if (!p.occupation?.trim()) return `${who}: occupation is required.`;
@@ -309,7 +312,8 @@ app.post('/api/intake', async (req: Request, res: Response) => {
       broker_email: formData.finance?.brokerEmail || null,
       broker_company: formData.finance?.lenderName || null,
       how_did_you_hear: formData.howDidYouHear || null,
-      signature_data: formData.declaration?.signatureDataUrl || null
+      signature_data: formData.declaration?.signatureDataUrl || null,
+      phone_country_code: primaryParty.phoneCountryCode || '+61'
     });
     matterReference = intakeRecord?.matter_reference || matterReference;
 

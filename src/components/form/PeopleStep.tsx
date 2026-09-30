@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ClientIntakeFormData, PartyFormData, UploadedDocument } from '../../types/index.js';
-import { DOB_MIN, dobMax, isPartyDetailsComplete } from '../../utils/validation.js';
-import { MAX_PARTIES } from './formState.js';
-import { ChoiceCards, DateField, Suggestions, TextField, TickIcon } from './fields.js';
+import { DOB_MIN, dobMax } from '../../utils/validation.js';
+import { Address, pickAddress } from './formState.js';
+import { CheckboxCard, DateField, SelectField, Suggestions, TextField } from './fields.js';
 import { PhoneField } from './PhoneField.js';
 import { FileUpload } from './FileUpload.js';
+import { AddressFields } from './AddressFields.js';
 
 interface PeopleStepProps {
   formData: ClientIntakeFormData;
@@ -13,11 +14,14 @@ interface PeopleStepProps {
   live: Record<string, string>;
   onSelectParty: (index: number) => void;
   onUpdateParty: (index: number, field: keyof PartyFormData, value: string) => void;
+  onSetPartyCount: (count: number) => void;
   onAddParty: () => void;
   onRemoveParty: (index: number) => void;
   onAddDocument: (partyId: string, doc: UploadedDocument) => void;
   onRemoveDocument: (partyId: string, docId: string) => void;
   onUploadingChange: (uploading: boolean) => void;
+  onAddressChange: (index: number, patch: Partial<Address>) => void;
+  onSameAsAbove: (index: number, checked: boolean) => void;
 }
 
 export const RESIDENCY_OPTIONS = [
@@ -26,152 +30,254 @@ export const RESIDENCY_OPTIONS = [
   { value: 'Temporary Resident', label: 'Temporary resident', description: 'I am in Australia on a temporary visa.' }
 ];
 
-// For people without a job title; everyone else types theirs (e.g. Nurse, Electrician)
 const OCCUPATION_SUGGESTIONS = ['Retired', 'Student', 'Self-employed', 'Business owner', 'Home duties', 'Not currently working'];
+
+/** Realistic maximum: 1–6 people on a single contract */
+const MAX_SELECTABLE = 6;
+const PARTY_COUNT_OPTIONS = Array.from({ length: MAX_SELECTABLE }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1)
+}));
 
 export function partyDisplayName(p: PartyFormData): string {
   return [p.firstName, p.lastName].filter(s => s.trim()).join(' ');
 }
 
-export const PeopleStep: React.FC<PeopleStepProps> = ({
-  formData, partyIndex, errors, live, onSelectParty, onUpdateParty, onAddParty, onRemoveParty,
-  onAddDocument, onRemoveDocument, onUploadingChange
+/** Renders address fields for a party, with "Same As Above" / "Add New Address" for party 2+ */
+const AddressSection: React.FC<{
+  party: PartyFormData;
+  index: number;
+  role: string;
+  previousParty: PartyFormData | undefined;
+  errors: Record<string, string>;
+  live: Record<string, string>;
+  onAddressChange: (patch: Partial<Address>) => void;
+  onSameAsAbove: (checked: boolean) => void;
+}> = ({ party, index, previousParty, role, errors, live, onAddressChange, onSameAsAbove }) => {
+
+  // For party 2+ show a dropdown: "Same As Above" or "Add New Address"
+  if (previousParty) {
+    const addressChoice = party.sameAddressAsPrevious ? 'same' : 'new';
+
+    return (
+      <div className="rk-address-section">
+        <h3 className="rk-section-label">Add Address</h3>
+        <SelectField
+          id={`${party.id}-addr-choice`}
+          label="- select a option -"
+          placeholder="- select a option -"
+          options={[
+            { value: 'same', label: 'Same As Above' },
+            { value: 'new', label: 'Add New Address' }
+          ]}
+          value={addressChoice}
+          onChange={v => onSameAsAbove(v === 'same')}
+        />
+        {addressChoice === 'same' ? (
+          <div className="rk-address-copied">
+            <p className="rk-hint">Address copied from {partyDisplayName(previousParty) || `${role} ${index}`}.</p>
+          </div>
+        ) : (
+          <AddressFields
+            idPrefix={`${party.id}-addr`}
+            address={pickAddress(party)}
+            errors={errors}
+            live={live}
+            onChange={onAddressChange}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // First party: full address form
+  return (
+    <div className="rk-address-section">
+      <h3 className="rk-section-label">Current Address</h3>
+      <AddressFields
+        idPrefix={`${party.id}-addr`}
+        address={pickAddress(party)}
+        errors={errors}
+        live={live}
+        onChange={onAddressChange}
+      />
+    </div>
+  );
+};
+
+/** Renders a single person's complete form (details + address). */
+const PersonForm: React.FC<{
+  party: PartyFormData;
+  index: number;
+  total: number;
+  role: string;
+  errors: Record<string, string>;
+  live: Record<string, string>;
+  previousParty: PartyFormData | undefined;
+  onUpdate: (field: keyof PartyFormData, value: string) => void;
+  onAddDocument: (doc: UploadedDocument) => void;
+  onRemoveDocument: (docId: string) => void;
+  onUploadingChange: (uploading: boolean) => void;
+  onAddressChange: (patch: Partial<Address>) => void;
+  onSameAsAbove: (checked: boolean) => void;
+}> = ({
+  party, index, total, role, errors, live,
+  previousParty, onUpdate, onAddDocument, onRemoveDocument, onUploadingChange,
+  onAddressChange, onSameAsAbove
 }) => {
-  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
-  const role = formData.role;
-  const party = formData.parties[partyIndex];
-  const total = formData.parties.length;
   const id = (field: string) => `${party.id}-${field}`;
   const ok = (field: keyof PartyFormData) => Boolean(String(party[field]).trim()) && !live[id(field)];
-  const update = (field: keyof PartyFormData) => (value: string) => onUpdateParty(partyIndex, field, value);
 
   return (
-    <>
-      {/* Everyone on the form — this list scrolls on its own */}
-      <section className="rk-panel" aria-labelledby="party-list-title">
-        <div className="rk-panel-head">
-          <h2 id="party-list-title" className="rk-panel-title">{role}s on this contract ({total})</h2>
-          <p className="rk-hint">Add every person whose name will be on the contract.</p>
-        </div>
+    <div className="rk-person-card" aria-labelledby={`${party.id}-title`}>
+      {/* Separator line between people */}
+      {index > 0 && <hr className="rk-person-divider" />}
 
-        <ol className="rk-party-list" aria-label={`${role} list`}>
-          {formData.parties.map((p, i) => {
-            const name = partyDisplayName(p);
-            const complete = isPartyDetailsComplete(p);
-            const isCurrent = i === partyIndex;
-            const confirming = confirmRemoveId === p.id;
-            return (
-              <li key={p.id} className={`rk-party${isCurrent ? ' rk-party-current' : ''}`}>
-                <span className={`rk-party-dot${complete ? ' rk-party-dot-done' : ''}`} aria-hidden="true">
-                  {complete ? <TickIcon /> : i + 1}
-                </span>
-                <span className="rk-party-info">
-                  <span className="rk-party-name">{name || `${role} ${i + 1}`}</span>
-                  <span className="rk-party-status">
-                    {isCurrent ? 'You are editing this person' : complete ? 'Details complete' : 'Details needed'}
-                  </span>
-                </span>
-                {confirming ? (
-                  <span className="rk-party-actions">
-                    <span className="rk-confirm">Remove {name || `${role} ${i + 1}`}?</span>
-                    <button type="button" className="rk-btn rk-btn-danger rk-btn-small"
-                      onClick={() => { setConfirmRemoveId(null); onRemoveParty(i); }}>
-                      Yes, remove
-                    </button>
-                    <button type="button" className="rk-btn rk-btn-secondary rk-btn-small" onClick={() => setConfirmRemoveId(null)}>
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <span className="rk-party-actions">
-                    {!isCurrent && (
-                      <button type="button" className="rk-btn rk-btn-secondary rk-btn-small" onClick={() => onSelectParty(i)}>
-                        Edit
-                      </button>
-                    )}
-                    {total > 1 && (
-                      <button type="button" className="rk-link-button rk-danger" onClick={() => setConfirmRemoveId(p.id)}>
-                        Remove
-                      </button>
-                    )}
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+      {/* Heading */}
+      <h2 id={`${party.id}-title`} className="rk-person-heading">
+        {role} {index + 1}
+      </h2>
 
-        <button type="button" className="rk-add-button" onClick={onAddParty} disabled={total >= MAX_PARTIES}>
-          + Add another {role.toLowerCase()}
-        </button>
-        {total >= MAX_PARTIES && <p className="rk-hint">You can add up to {MAX_PARTIES} people.</p>}
-      </section>
+      {/* ─── Name row: 3 columns ─── */}
+      <div className="rk-name-row">
+        <TextField id={id('firstName')} label="First Name" required placeholder="First Name" autoComplete="given-name"
+          value={party.firstName} error={errors[id('firstName')]} valid={ok('firstName')} onChange={v => onUpdate('firstName', v)} />
+        <TextField id={id('middleName')} label="Middle Name" placeholder="Middle Name" autoComplete="additional-name"
+          value={party.middleName} valid={ok('middleName')} onChange={v => onUpdate('middleName', v)} />
+        <TextField id={id('lastName')} label="Last Name" required placeholder="Last Name" autoComplete="family-name"
+          value={party.lastName} error={errors[id('lastName')]} valid={ok('lastName')} onChange={v => onUpdate('lastName', v)} />
+      </div>
 
-      {/* Details of the selected person */}
-      <section className="rk-panel" aria-labelledby="party-form-title">
-        <div className="rk-panel-head">
-          <p className="rk-overline">{role} {partyIndex + 1} of {total}</p>
-          <h2 id="party-form-title" className="rk-panel-title">{partyDisplayName(party) || `${role} ${partyIndex + 1}`}</h2>
-        </div>
-
-        <TextField id={id('firstName')} label="First name" required placeholder="e.g. John" autoComplete="given-name"
-          value={party.firstName} error={errors[id('firstName')]} valid={ok('firstName')} onChange={update('firstName')} />
-        <TextField id={id('middleName')} label="Middle name" placeholder="e.g. Michael" autoComplete="additional-name"
-          value={party.middleName} valid={ok('middleName')} onChange={update('middleName')} />
-        <TextField id={id('lastName')} label="Last name" required placeholder="e.g. Smith" autoComplete="family-name"
-          hint="Please write your name exactly as it appears on your ID."
-          value={party.lastName} error={errors[id('lastName')]} valid={ok('lastName')} onChange={update('lastName')} />
-        <PhoneField id={id('mobile')} label="Phone" required
+      {/* ─── Phone + Email row ─── */}
+      <div className="rk-contact-row">
+        <PhoneField id={id('mobile')} label="Your Phone number" required
           countryCode={party.phoneCountryCode || '+61'}
           phoneNumber={party.mobile}
-          onCountryCodeChange={update('phoneCountryCode')}
-          onPhoneChange={update('mobile')}
+          onCountryCodeChange={v => onUpdate('phoneCountryCode', v)}
+          onPhoneChange={v => onUpdate('mobile', v)}
           error={errors[id('mobile')]} valid={ok('mobile')} />
-        <TextField id={id('email')} type="email" inputMode="email" label="Email" required
-          placeholder="e.g. john.smith@example.com" autoComplete="email"
-          hint={partyIndex === 0 ? 'We will send your confirmation to this email.' : undefined}
-          value={party.email} error={errors[id('email')]} valid={ok('email')} onChange={update('email')} />
+        <TextField id={id('email')} type="email" inputMode="email" label="Your E-mail Address" required
+          placeholder="Your E-mail Address" autoComplete="email"
+          value={party.email} error={errors[id('email')]} valid={ok('email')} onChange={v => onUpdate('email', v)} />
+      </div>
+
+      {/* ─── DOB ─── */}
+      <div className="rk-dob-row">
         <DateField
           id={id('dob')}
-          label="Date of birth"
+          label="Date of Birth"
           required
-          hint="You must be 18 or older."
           min={DOB_MIN}
           max={dobMax()}
           autoComplete="bday"
           value={party.dob}
           error={errors[id('dob')]}
           valid={ok('dob')}
-          onChange={update('dob')}
+          onChange={v => onUpdate('dob', v)}
         />
+      </div>
 
-        <TextField id={id('occupation')} label="Occupation" required placeholder="e.g. Nurse" autoComplete="organization-title"
-          value={party.occupation} error={errors[id('occupation')]} valid={ok('occupation')} onChange={update('occupation')} />
-        <Suggestions items={OCCUPATION_SUGGESTIONS} current={party.occupation} onPick={update('occupation')} />
+      {/* ─── Address ─── */}
+      <AddressSection
+        party={party}
+        index={index}
+        role={role}
+        previousParty={previousParty}
+        errors={errors}
+        live={live}
+        onAddressChange={onAddressChange}
+        onSameAsAbove={onSameAsAbove}
+      />
 
-        <ChoiceCards
+      {/* ─── Residency + ID ─── */}
+      <div className="rk-extras-row">
+        <SelectField
           id={id('residencyStatus')}
-          label="Residency status"
+          label="Choose Residency Status"
           required
-          columns={3}
-          options={RESIDENCY_OPTIONS}
+          placeholder="Choose Residency Status"
+          options={RESIDENCY_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
           value={party.residencyStatus}
           error={errors[id('residencyStatus')]}
-          onChange={update('residencyStatus')}
+          valid={Boolean(party.residencyStatus) && !live[id('residencyStatus')]}
+          onChange={v => onUpdate('residencyStatus', v)}
         />
-
         <FileUpload
           id={id('idDocuments')}
-          label="Photo ID"
-          hint="Driver licence, passport or photo card. You can upload the front and back as separate files. A clear phone photo is fine."
+          label="Upload your ID documents..."
+          hint="(Driving License, Passport, Photo Card)"
           kind="identity"
           partyId={party.id}
           value={party.idDocuments}
-          onAdd={doc => onAddDocument(party.id, doc)}
-          onRemove={docId => onRemoveDocument(party.id, docId)}
+          onAdd={onAddDocument}
+          onRemove={onRemoveDocument}
           onUploadingChange={onUploadingChange}
         />
-      </section>
-    </>
+      </div>
+
+      {/* ─── Occupation ─── */}
+      <TextField id={id('occupation')} label="Occupation" required placeholder="e.g. Nurse" autoComplete="organization-title"
+        value={party.occupation} error={errors[id('occupation')]} valid={ok('occupation')} onChange={v => onUpdate('occupation', v)} />
+      <Suggestions items={OCCUPATION_SUGGESTIONS} current={party.occupation} onPick={v => onUpdate('occupation', v)} />
+    </div>
+  );
+};
+
+export const PeopleStep: React.FC<PeopleStepProps> = ({
+  formData, partyIndex, errors, live, onSelectParty, onUpdateParty, onSetPartyCount,
+  onAddParty, onRemoveParty, onAddDocument, onRemoveDocument, onUploadingChange,
+  onAddressChange, onSameAsAbove
+}) => {
+  const role = formData.role;
+  const total = formData.parties.length;
+
+  return (
+    <section className="rk-panel rk-people-panel">
+      {/* ─── Number selector ─── */}
+      <div className="rk-count-selector">
+        <label htmlFor="partyCount" className="rk-count-label">
+          Number of {role} <span className="rk-req" aria-hidden="true">*</span>:
+        </label>
+        <div className="rk-box rk-count-box">
+          <select
+            id="partyCount"
+            className="rk-box-input rk-select rk-count-select"
+            value={String(Math.min(total, MAX_SELECTABLE))}
+            aria-required="true"
+            aria-label={`Number of ${role}`}
+            onChange={e => onSetPartyCount(Number(e.target.value))}
+          >
+            {Array.from({ length: Math.max(MAX_SELECTABLE, total) }, (_, i) => {
+              const num = i + 1;
+              return (
+                <option key={num} value={String(num)}>
+                  {num} {num === 1 ? role : `${role}s`}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      </div>
+
+      {/* ─── All people on this page ─── */}
+      {formData.parties.map((party, i) => (
+        <PersonForm
+          key={party.id}
+          party={party}
+          index={i}
+          total={total}
+          role={role}
+          errors={errors}
+          live={live}
+          previousParty={formData.parties[i - 1]}
+          onUpdate={(field, value) => onUpdateParty(i, field, value)}
+          onAddDocument={doc => onAddDocument(party.id, doc)}
+          onRemoveDocument={docId => onRemoveDocument(party.id, docId)}
+          onUploadingChange={onUploadingChange}
+          onAddressChange={patch => onAddressChange(i, patch)}
+          onSameAsAbove={checked => onSameAsAbove(i, checked)}
+        />
+      ))}
+    </section>
   );
 };

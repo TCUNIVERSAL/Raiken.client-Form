@@ -17,6 +17,7 @@ export interface FakeEnvelope {
   id: string;
   status: string;
   partnerReference: string;
+  partnerId?: string;
   aml: { status: string; riskRating: string | null };
   customers: any[];
 }
@@ -51,7 +52,7 @@ const server = http.createServer((req, res) => {
     if (req.headers['x-api-key'] !== 'test-key') return send(401, 'Invalid API key');
     if (url.startsWith('/api/Utilities/country-codes')) return send(200, [{ id: 13, phoneCode: '+61' }, { id: 99, phoneCode: '+91' }]);
     if (req.method === 'GET' && url.startsWith('/api/Envelopes?')) {
-      return send(200, { results: [...fakeLiveSign.envelopes.values()].map(e => ({ id: e.id, partnerReference: e.partnerReference })) });
+      return send(200, { results: [...fakeLiveSign.envelopes.values()].map(e => ({ id: e.id, partnerReference: e.partnerReference, partnerId: e.partnerId })) });
     }
     if (req.method === 'POST' && url === '/api/Envelopes/express') {
       if (fakeLiveSign.failExpressWith) {
@@ -61,10 +62,15 @@ const server = http.createServer((req, res) => {
       }
       const payload = JSON.parse(body);
       fakeLiveSign.lastPayload = payload;
+      // Like the real LiveSign: an unknown / all-zero partner id is refused before anything is created
+      if (!payload?.envelope?.partnerId || /^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(payload.envelope.partnerId)) {
+        return send(400, ['Invalid PartnerId provided']);
+      }
       const envelope: FakeEnvelope = {
         id: randomUUID(),
         status: 'Draft',
         partnerReference: payload.envelope.partnerReference,
+        partnerId: payload.envelope.partnerId,
         aml: { status: 'AwaitingVoiAndPep', riskRating: null },
         customers: payload.customers.map((c: any) => ({
           id: randomUUID(), index: c.index, firstName: c.firstName, lastName: c.lastName, emailAddress: c.emailAddress,

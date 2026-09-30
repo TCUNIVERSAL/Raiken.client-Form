@@ -89,6 +89,7 @@ ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_email TE
 ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_company TEXT;
 ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS how_did_you_hear TEXT;
 ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS signature_data TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS phone_country_code TEXT DEFAULT '+61';
 
 -- ------------------------------------------------------------------------------
 -- 3b. Identity verification per person (one row for each purchaser / vendor)

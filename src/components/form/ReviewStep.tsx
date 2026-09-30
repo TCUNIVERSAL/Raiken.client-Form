@@ -99,7 +99,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         </Section>
       ))}
 
-      <Section title="Addresses" onEdit={() => onEdit('addresses')} editLabel="Edit addresses">
+      <Section title="Addresses" onEdit={() => onEdit('people')} editLabel="Edit addresses">
         {formData.parties.map((p, i) => (
           <Row
             key={p.id}

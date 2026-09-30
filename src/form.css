@@ -7,10 +7,10 @@
 
 :root {
   --rk-font: 'Figtree', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --rk-page: #f1f1f5;
+  --rk-page: #d5eef8;
   --rk-surface: #ffffff;
-  --rk-border: #dcdce4;
-  --rk-border-strong: #b7b6c4;
+  --rk-border: #c8d8e4;
+  --rk-border-strong: #9fb5c4;
   --rk-text: #1c1b29;
   --rk-muted: #595869;
   --rk-faint: #8c8b9c;
@@ -18,10 +18,11 @@
   --rk-primary-hover: #13234b;
   --rk-primary-soft: #e8edf7;
   --rk-cyan: #0aa3dc;
+  --rk-label: #c97820;
   --rk-danger: #c62828;
   --rk-danger-soft: #fdf1f1;
   --rk-success: #16804a;
-  --rk-gradient: linear-gradient(90deg, #0aa3dc 0%, #1b2f63 100%);
+  --rk-gradient: linear-gradient(90deg, #2ec4b6 0%, #0aa3dc 50%, #1b2f63 100%);
 }
 
 /* The page behind the form is plain grey (overrides the photo backdrop in index.css) */
@@ -83,10 +84,11 @@ html[data-theme] body {
 /* ─── Stepper ───────────────────────────────────────────────────────────── */
 .rk-stepper-nav {
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border: none;
+  border-radius: 14px;
   padding: 18px 22px;
   margin-bottom: 24px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
 }
 
 /* Equal columns: circle on top, label centred underneath, a line joining the circles */
@@ -242,10 +244,11 @@ html[data-theme] body {
 /* ─── Panels ────────────────────────────────────────────────────────────── */
 .rk-panel {
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border: none;
+  border-radius: 14px;
   padding: 26px 28px;
   margin-bottom: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
 }
 
 .rk-panel-head {
@@ -258,7 +261,7 @@ html[data-theme] body {
   margin: 0;
 }
 
-/* ─── Inline-label input box ────────────────────────────────────────────── */
+/* ─── Floating-label input box ─────────────────────────────────────────── */
 .rk-field {
   margin: 0 0 14px;
   min-width: 0;
@@ -270,19 +273,18 @@ html[data-theme] body {
 
 .rk-box {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  column-gap: 12px;
-  min-height: 54px;
-  padding: 0 16px;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  min-height: 68px;
+  padding: 10px 24px 8px;
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border: 1.5px solid var(--rk-border);
+  border-radius: 28px;
 }
 
 .rk-box:focus-within {
-  border-color: var(--rk-primary);
-  box-shadow: 0 0 0 3px var(--rk-primary-soft);
+  border-color: var(--rk-cyan);
+  box-shadow: 0 0 0 3px rgba(10, 163, 220, 0.12);
 }
 
 .rk-invalid .rk-box {
@@ -291,25 +293,40 @@ html[data-theme] body {
 }
 
 .rk-box-label {
+  grid-column: 1;
+  grid-row: 1;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-  color: var(--rk-text);
+  color: var(--rk-label);
   cursor: pointer;
+  padding-top: 2px;
 }
 
 .rk-app .rk-box-input {
+  grid-column: 1;
+  grid-row: 2;
   width: 100%;
   min-width: 0;
   border: none;
   border-radius: 0;
-  padding: 14px 0;
+  padding: 4px 0 6px;
   font-family: var(--rk-font);
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
+  font-weight: 500;
   color: var(--rk-text);
   background-color: transparent;
   box-shadow: none;
   outline: none;
+}
+
+.rk-tick {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--rk-cyan);
+  flex: none;
 }
 
 .rk-app .rk-box-input:focus {
@@ -327,7 +344,25 @@ html[data-theme] body {
 
 /* ─── Phone field with country code ───────────────────────────────────── */
 .rk-box-phone {
-  grid-template-columns: auto 1fr auto;
+  /* label in row 1, phone-group + tick in row 2 */
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+}
+
+.rk-box-phone .rk-box-label {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.rk-box-phone .rk-phone-group {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.rk-box-phone .rk-tick {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
 }
 
 .rk-phone-group {
@@ -481,10 +516,7 @@ html[data-theme] body {
   opacity: 0.7;
 }
 
-.rk-tick {
-  color: var(--rk-primary);
-  flex: none;
-}
+/* .rk-tick is defined in the .rk-box grid section above */
 
 .rk-date-readout {
   margin: 6px 0 0;
@@ -504,6 +536,115 @@ html[data-theme] body {
 
 .rk-row > .rk-field:last-child {
   margin-bottom: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   People Step — all parties on one page
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Main panel housing everything */
+.rk-people-panel {
+  padding: 28px 28px 12px;
+}
+
+/* Number-of-purchasers dropdown — sits at the top */
+.rk-count-selector {
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+.rk-count-label {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--rk-text);
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+
+.rk-count-label .rk-req {
+  color: var(--rk-label);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.rk-box.rk-count-box {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 24px;
+}
+
+.rk-app .rk-box.rk-count-box .rk-count-select {
+  grid-column: unset;
+  grid-row: unset;
+  width: 100%;
+  padding: 14px 28px 14px 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--rk-text);
+}
+
+/* Each person card */
+.rk-person-card {
+  margin-bottom: 20px;
+}
+
+/* Dashed line between people */
+.rk-person-divider {
+  border: none;
+  border-top: 2px dashed var(--rk-border);
+  margin: 28px 0 20px;
+}
+
+/* "Purchaser 1" heading */
+.rk-person-heading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 18px;
+  color: var(--rk-text);
+}
+
+/* ─── Grid rows for fields ─── */
+.rk-name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 14px;
+  margin-bottom: 0;
+}
+
+.rk-contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+  margin-bottom: 0;
+}
+
+.rk-dob-row {
+  max-width: 50%;
+  margin-bottom: 0;
+}
+
+/* Residency + ID upload stacked vertically */
+.rk-extras-row {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ─── Address section ─── */
+.rk-address-section {
+  margin: 16px 0 14px;
+}
+
+.rk-section-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--rk-text);
+}
+
+.rk-address-copied {
+  padding: 10px 0 4px;
 }
 
 .rk-textarea {
@@ -570,8 +711,8 @@ html[data-theme] body {
   min-height: 58px;
   padding: 16px 48px 16px 18px;
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border: 1.5px solid var(--rk-border);
+  border-radius: 14px;
   cursor: pointer;
 }
 
@@ -636,8 +777,8 @@ html[data-theme] body {
   gap: 14px;
   padding: 16px 18px;
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border: 1.5px solid var(--rk-border);
+  border-radius: 14px;
   cursor: pointer;
 }
 
@@ -689,8 +830,8 @@ html[data-theme] body {
   font-size: 0.95rem;
   color: var(--rk-text);
   background: var(--rk-surface);
-  border: 1px solid var(--rk-border);
-  border-radius: 3px;
+  border: 1.5px solid var(--rk-border);
+  border-radius: 20px;
   cursor: pointer;
 }
 
@@ -711,12 +852,12 @@ html[data-theme] body {
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  padding: 0 24px;
+  padding: 0 28px;
   font-family: var(--rk-font);
   font-size: 1.0625rem;
   font-weight: 700;
-  border-radius: 4px;
-  border: 1px solid transparent;
+  border-radius: 28px;
+  border: 1.5px solid transparent;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1025,7 +1166,7 @@ html[data-theme] body {
   text-align: center;
   background: var(--rk-surface);
   border: 1.5px dashed var(--rk-border-strong);
-  border-radius: 4px;
+  border-radius: 14px;
 }
 
 .rk-dropzone-active {
@@ -1056,7 +1197,7 @@ html[data-theme] body {
   margin-bottom: 8px;
   background: var(--rk-surface);
   border: 1px solid var(--rk-border);
-  border-radius: 4px;
+  border-radius: 14px;
 }
 
 .rk-file-main {
@@ -1199,24 +1340,52 @@ html[data-theme] body {
     padding: 20px 16px;
   }
 
-  /* Label sits above the answer, still inside the box */
+  /* Floating-label box — mobile */
   .rk-box {
-    grid-template-columns: 1fr auto;
-    padding: 8px 14px 0;
+    padding: 8px 16px 6px;
+    border-radius: 20px;
   }
 
   .rk-box-label {
-    grid-column: 1 / -1;
-    font-size: 0.9rem;
     white-space: normal;
+    font-size: 0.85rem;
   }
 
   .rk-app .rk-box-input {
-    padding: 4px 0 10px;
+    padding: 2px 0 6px;
   }
 
   .rk-row {
     grid-template-columns: 1fr;
+  }
+
+  .rk-name-row,
+  .rk-contact-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rk-dob-row {
+    max-width: 100%;
+  }
+
+  .rk-count-selector {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .rk-count-label {
+    font-size: 1.05rem;
+  }
+
+  .rk-box.rk-count-box {
+    padding: 0 18px;
+    min-height: 52px;
+    border-radius: 20px;
+  }
+
+  .rk-app .rk-box.rk-count-box .rk-count-select {
+    padding: 12px 20px 12px 0;
+    font-size: 1.05rem;
   }
 
   .rk-party {

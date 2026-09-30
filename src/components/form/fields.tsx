@@ -299,7 +299,18 @@ export const Stepper: React.FC<{ steps: string[]; current: number; allDone?: boo
       })}
     </ol>
     {!allDone && (
-      <p className="rk-step-mobile">Step {current + 1} of {steps.length}: <strong>{steps[current]}</strong></p>
+      <div className="rk-step-mobile">
+        <div className="rk-step-mobile-bar" aria-hidden="true">
+          <div
+            className="rk-step-mobile-fill"
+            style={{ width: `${Math.round(((current + 1) / steps.length) * 100)}%` }}
+          />
+        </div>
+        <p className="rk-step-mobile-text">
+          <span>Step {current + 1} of {steps.length}: <strong>{steps[current]}</strong></span>
+          <span className="rk-step-mobile-pct">{Math.round(((current + 1) / steps.length) * 100)}%</span>
+        </p>
+      </div>
     )}
   </nav>
 );

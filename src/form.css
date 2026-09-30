@@ -1,0 +1,1145 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Raikan client form
+   Flat white panels on a light grey page, inline-label input boxes, radio
+   cards and a horizontal stepper. deep navy for actions, cyan for
+   completed steps. No shadows or motion.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --rk-font: 'Figtree', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --rk-page: #f1f1f5;
+  --rk-surface: #ffffff;
+  --rk-border: #dcdce4;
+  --rk-border-strong: #b7b6c4;
+  --rk-text: #1c1b29;
+  --rk-muted: #595869;
+  --rk-faint: #8c8b9c;
+  --rk-primary: #1b2f63;
+  --rk-primary-hover: #13234b;
+  --rk-primary-soft: #e8edf7;
+  --rk-cyan: #0aa3dc;
+  --rk-danger: #c62828;
+  --rk-danger-soft: #fdf1f1;
+  --rk-success: #16804a;
+  --rk-gradient: linear-gradient(90deg, #0aa3dc 0%, #1b2f63 100%);
+}
+
+/* The page behind the form is plain grey (overrides the photo backdrop in index.css) */
+html[data-theme] body {
+  background: var(--rk-page);
+  background-image: none;
+  color: var(--rk-text);
+  font-family: var(--rk-font);
+}
+
+.rk-app,
+.rk-app * {
+  transition: none;
+  animation: none;
+}
+
+.rk-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--rk-font);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.rk-app h1,
+.rk-app h2 {
+  font-family: var(--rk-font);
+  letter-spacing: -0.01em;
+  color: var(--rk-text);
+}
+
+/* ─── Page frame ────────────────────────────────────────────────────────── */
+.rk-main {
+  flex: 1;
+  padding: 28px 16px 48px;
+}
+
+.rk-footer {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--rk-muted);
+  padding: 20px 16px;
+  border-top: 1px solid var(--rk-border);
+  background: var(--rk-surface);
+}
+
+.rk-shell {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.rk-loading {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--rk-muted);
+}
+
+/* ─── Stepper ───────────────────────────────────────────────────────────── */
+.rk-stepper-nav {
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  padding: 18px 22px;
+  margin-bottom: 24px;
+}
+
+/* Equal columns: circle on top, label centred underneath, a line joining the circles */
+.rk-stepper {
+  list-style: none;
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+
+.rk-step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  color: var(--rk-faint);
+}
+
+/* Line from the previous circle to this one */
+.rk-step + .rk-step::before {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: calc(-50% + 20px);
+  right: calc(50% + 20px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--rk-border);
+}
+
+.rk-step-done::before,
+.rk-step-current::before {
+  background: var(--rk-cyan) !important;
+}
+
+.rk-step-dot {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1.5px solid var(--rk-border-strong);
+  color: var(--rk-faint);
+  background: var(--rk-surface);
+}
+
+.rk-step-label {
+  padding: 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.rk-step-current {
+  color: var(--rk-primary);
+  font-weight: 700;
+}
+
+.rk-step-current .rk-step-dot {
+  background: var(--rk-primary);
+  border-color: var(--rk-primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--rk-primary-soft);
+}
+
+.rk-step-done {
+  color: var(--rk-text);
+  font-weight: 600;
+}
+
+.rk-step-done .rk-step-dot {
+  background: var(--rk-cyan);
+  border-color: var(--rk-cyan);
+  color: #fff;
+}
+
+.rk-step-mobile {
+  display: none;
+  margin: 12px 0 0;
+  font-size: 0.95rem;
+  color: var(--rk-muted);
+}
+
+.rk-step-mobile strong {
+  color: var(--rk-primary);
+}
+
+/* ─── Headings & text ───────────────────────────────────────────────────── */
+.rk-intro {
+  margin-bottom: 16px;
+}
+
+.rk-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 6px;
+}
+
+.rk-lead {
+  color: var(--rk-muted);
+  margin: 0 0 16px;
+}
+
+.rk-overline {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--rk-muted);
+  margin: 0 0 6px;
+}
+
+.rk-welcome {
+  color: var(--rk-success);
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.rk-req {
+  color: var(--rk-danger);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.rk-opt {
+  color: var(--rk-muted);
+  font-weight: 400;
+}
+
+.rk-hint {
+  font-size: 0.95rem;
+  color: var(--rk-muted);
+  margin: 6px 0 0;
+}
+
+.rk-error {
+  color: var(--rk-danger);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 6px 0 0;
+}
+
+/* ─── Panels ────────────────────────────────────────────────────────────── */
+.rk-panel {
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  padding: 26px 28px;
+  margin-bottom: 20px;
+}
+
+.rk-panel-head {
+  margin-bottom: 18px;
+}
+
+.rk-panel-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ─── Inline-label input box ────────────────────────────────────────────── */
+.rk-field {
+  margin: 0 0 14px;
+  min-width: 0;
+}
+
+.rk-field:last-child {
+  margin-bottom: 0;
+}
+
+.rk-box {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 54px;
+  padding: 0 16px;
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+}
+
+.rk-box:focus-within {
+  border-color: var(--rk-primary);
+  box-shadow: 0 0 0 3px var(--rk-primary-soft);
+}
+
+.rk-invalid .rk-box {
+  border-color: var(--rk-danger);
+  background: var(--rk-danger-soft);
+}
+
+.rk-box-label {
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+  color: var(--rk-text);
+  cursor: pointer;
+}
+
+.rk-app .rk-box-input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+  padding: 14px 0;
+  font-family: var(--rk-font);
+  font-size: 1.0625rem;
+  color: var(--rk-text);
+  background-color: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.rk-app .rk-box-input:focus {
+  box-shadow: none;
+}
+
+.rk-app .rk-box-input::placeholder {
+  color: var(--rk-faint);
+}
+
+.rk-app .rk-box-input[readonly] {
+  color: var(--rk-muted);
+  cursor: default;
+}
+
+.rk-app .rk-select {
+  cursor: pointer;
+  padding-right: 22px;
+  background-position: right 0 center;
+}
+
+.rk-app .rk-select.rk-placeholder {
+  color: var(--rk-faint);
+}
+
+.rk-app .rk-date {
+  cursor: pointer;
+}
+
+.rk-app .rk-date::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.rk-tick {
+  color: var(--rk-primary);
+  flex: none;
+}
+
+.rk-date-readout {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: var(--rk-muted);
+}
+
+.rk-date-readout strong {
+  color: var(--rk-text);
+}
+
+.rk-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+.rk-row > .rk-field:last-child {
+  margin-bottom: 14px;
+}
+
+.rk-textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 16px;
+  font-family: var(--rk-font);
+  font-size: 1.0625rem;
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+/* ─── Questions with choice cards ───────────────────────────────────────── */
+.rk-fieldset {
+  border: none;
+  padding: 0;
+  margin: 18px 0;
+}
+
+.rk-fieldset:first-child {
+  margin-top: 0;
+}
+
+.rk-fieldset:focus {
+  outline: none;
+}
+
+.rk-question {
+  display: block;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  margin: 18px 0 4px;
+  padding: 0;
+  color: var(--rk-text);
+}
+
+.rk-fieldset > .rk-question,
+.rk-field > .rk-question:first-child {
+  margin-top: 0;
+}
+
+.rk-question-hint {
+  margin: 0 0 4px;
+}
+
+.rk-cards {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.rk-cols-1 { grid-template-columns: 1fr; }
+.rk-cards > .rk-field { margin: 0; }
+.rk-cols-2 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rk-cols-3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+.rk-card-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 16px 48px 16px 18px;
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rk-card-choice:hover,
+.rk-check-card:hover {
+  border-color: var(--rk-border-strong);
+}
+
+.rk-card-selected,
+.rk-card-selected:hover {
+  border-color: var(--rk-primary);
+  box-shadow: inset 0 0 0 1px var(--rk-primary);
+}
+
+.rk-card-choice input[type='radio'] {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--rk-border-strong);
+  border-radius: 50%;
+  background: var(--rk-surface);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.rk-card-choice input[type='radio']:checked {
+  border: 6px solid var(--rk-primary);
+}
+
+.rk-card-choice:has(input:focus-visible),
+.rk-check-card:has(input:focus-visible) {
+  outline: 3px solid var(--rk-primary-soft);
+  outline-offset: 1px;
+  border-color: var(--rk-primary);
+}
+
+.rk-invalid .rk-card-choice {
+  border-color: var(--rk-danger);
+}
+
+.rk-card-title {
+  display: block;
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+
+.rk-card-desc {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--rk-muted);
+}
+
+.rk-check-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rk-invalid .rk-check-card {
+  border-color: var(--rk-danger);
+  background: var(--rk-danger-soft);
+}
+
+.rk-app .rk-check-card input[type='checkbox'] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--rk-primary);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.rk-criteria {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.rk-criteria li {
+  margin-bottom: 4px;
+}
+
+/* ─── Suggestion chips ──────────────────────────────────────────────────── */
+.rk-suggestions {
+  margin: -2px 0 14px;
+}
+
+.rk-suggestions .rk-overline {
+  font-size: 0.7rem;
+  margin-bottom: 8px;
+}
+
+.rk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rk-chip {
+  min-height: 40px;
+  padding: 6px 14px;
+  font-family: var(--rk-font);
+  font-size: 0.95rem;
+  color: var(--rk-text);
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rk-chip:hover {
+  border-color: var(--rk-primary);
+}
+
+.rk-chip-active {
+  border-color: var(--rk-primary);
+  background: var(--rk-primary-soft);
+  color: var(--rk-primary);
+  font-weight: 600;
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────── */
+.rk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 24px;
+  font-family: var(--rk-font);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rk-btn:focus-visible,
+.rk-link-button:focus-visible,
+.rk-chip:focus-visible,
+.rk-add-button:focus-visible {
+  outline: 3px solid var(--rk-primary-soft);
+  outline-offset: 2px;
+}
+
+.rk-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rk-btn-primary {
+  background: var(--rk-primary);
+  color: #fff;
+}
+
+.rk-btn-primary:hover:not(:disabled) {
+  background: var(--rk-primary-hover);
+}
+
+.rk-btn-secondary {
+  background: var(--rk-surface);
+  color: var(--rk-text);
+  border-color: var(--rk-border-strong);
+}
+
+.rk-btn-secondary:hover:not(:disabled) {
+  border-color: var(--rk-primary);
+  color: var(--rk-primary);
+}
+
+.rk-btn-ghost {
+  background: transparent;
+  color: var(--rk-primary);
+}
+
+.rk-btn-ghost:hover:not(:disabled) {
+  background: var(--rk-primary-soft);
+}
+
+.rk-btn-danger {
+  background: var(--rk-danger);
+  color: #fff;
+}
+
+.rk-btn-small {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+.rk-link-button {
+  padding: 0;
+  font-family: var(--rk-font);
+  font-size: inherit;
+  font-weight: 700;
+  color: var(--rk-primary);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rk-link-button.rk-danger {
+  color: var(--rk-danger);
+}
+
+.rk-add-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 12px;
+  font-family: var(--rk-font);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--rk-primary);
+  background: var(--rk-surface);
+  border: 1px dashed var(--rk-primary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rk-add-button:hover:not(:disabled) {
+  background: var(--rk-primary-soft);
+}
+
+.rk-add-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rk-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.rk-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.rk-nav-right {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.rk-save-status {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  text-align: right;
+  font-size: 0.95rem;
+  color: var(--rk-muted);
+}
+
+.rk-save-offline {
+  color: #9a5b00;
+  font-weight: 600;
+}
+
+/* ─── Messages ──────────────────────────────────────────────────────────── */
+.rk-error-summary {
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-danger);
+  border-left-width: 5px;
+  border-radius: 4px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.rk-error-summary-title {
+  font-weight: 700;
+  color: var(--rk-danger);
+  margin: 0 0 6px;
+}
+
+.rk-error-summary ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.rk-error-summary a {
+  color: var(--rk-danger);
+}
+
+.rk-notice {
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-left: 5px solid var(--rk-cyan);
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin: 0 0 20px;
+}
+
+.rk-notice p {
+  margin: 0 0 6px;
+}
+
+.rk-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.rk-info-box {
+  margin-top: 22px;
+  padding: 18px 20px;
+  background: var(--rk-page);
+  border-radius: 4px;
+  text-align: left;
+}
+
+.rk-info-box .rk-question {
+  margin-top: 0;
+}
+
+.rk-info-list {
+  margin: 8px 0 0;
+}
+
+.rk-info-list div {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.rk-info-list dt {
+  color: var(--rk-muted);
+}
+
+.rk-info-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ─── People list (scrolls on its own) ──────────────────────────────────── */
+.rk-party-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+}
+
+.rk-party {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rk-border);
+}
+
+.rk-party:last-child {
+  border-bottom: none;
+}
+
+.rk-party-current {
+  background: var(--rk-primary-soft);
+}
+
+.rk-party-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1.5px solid var(--rk-border-strong);
+  color: var(--rk-muted);
+  background: var(--rk-surface);
+}
+
+.rk-party-dot-done {
+  background: var(--rk-cyan);
+  border-color: var(--rk-cyan);
+  color: #fff;
+}
+
+.rk-party-info {
+  min-width: 0;
+}
+
+.rk-party-name {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rk-party-status {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--rk-muted);
+}
+
+.rk-party-current .rk-party-status {
+  color: var(--rk-primary);
+  font-weight: 600;
+}
+
+.rk-party-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rk-confirm {
+  font-weight: 600;
+}
+
+/* ─── File upload ───────────────────────────────────────────────────────── */
+.rk-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.rk-dropzone {
+  margin-top: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  background: var(--rk-surface);
+  border: 1.5px dashed var(--rk-border-strong);
+  border-radius: 4px;
+}
+
+.rk-dropzone-active {
+  border-color: var(--rk-primary);
+  background: var(--rk-primary-soft);
+}
+
+.rk-dropzone p {
+  margin: 6px 0 0;
+}
+
+.rk-upload-icon {
+  color: var(--rk-primary);
+}
+
+.rk-file-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.rk-file {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+}
+
+.rk-file-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.rk-file-name {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rk-file-status {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--rk-muted);
+}
+
+.rk-file-ok {
+  color: var(--rk-success);
+  font-weight: 600;
+}
+
+.rk-progress {
+  display: block;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 3px;
+  background: var(--rk-page);
+  overflow: hidden;
+}
+
+.rk-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--rk-primary);
+}
+
+/* ─── Review summary ("Label: value ✓") ─────────────────────────────────── */
+.rk-summary {
+  margin: 0;
+}
+
+.rk-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.rk-summary-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 13px 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+}
+
+.rk-summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.rk-summary-row dt {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rk-summary-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.rk-summary-row .rk-tick {
+  align-self: center;
+}
+
+.rk-summary-empty dd {
+  color: var(--rk-faint);
+  font-style: italic;
+}
+
+/* ─── Success ───────────────────────────────────────────────────────────── */
+.rk-success {
+  background: var(--rk-surface);
+  border: 1px solid var(--rk-border);
+  border-radius: 4px;
+  padding: 40px 28px;
+  text-align: center;
+}
+
+.rk-success-icon {
+  margin-bottom: 12px;
+}
+
+.rk-success-summary {
+  max-width: 460px;
+  margin: 20px auto 8px;
+  text-align: left;
+}
+
+.rk-reference {
+  font-weight: 800;
+  color: var(--rk-primary);
+  letter-spacing: 0.03em;
+}
+
+/* ─── Phones ────────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .rk-app {
+    font-size: 1rem;
+  }
+
+  .rk-main {
+    padding: 16px 16px 40px;
+  }
+
+  .rk-stepper-nav {
+    padding: 14px 16px;
+    margin-bottom: 18px;
+  }
+
+  .rk-step .rk-step-label {
+    display: none;
+  }
+
+  .rk-step-mobile {
+    display: block;
+  }
+
+  .rk-title {
+    font-size: 1.45rem;
+  }
+
+  .rk-panel {
+    padding: 20px 16px;
+  }
+
+  /* Label sits above the answer, still inside the box */
+  .rk-box {
+    grid-template-columns: 1fr auto;
+    padding: 8px 14px 0;
+  }
+
+  .rk-box-label {
+    grid-column: 1 / -1;
+    font-size: 0.9rem;
+    white-space: normal;
+  }
+
+  .rk-app .rk-box-input {
+    padding: 4px 0 10px;
+  }
+
+  .rk-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rk-party {
+    grid-template-columns: auto 1fr;
+  }
+
+  .rk-party-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .rk-summary-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .rk-summary-row dt {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+
+  .rk-nav {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .rk-nav-right {
+    flex-direction: column-reverse;
+  }
+
+  .rk-nav .rk-btn {
+    width: 100%;
+  }
+
+  .rk-save-status {
+    text-align: center;
+  }
+
+  .rk-info-list div {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media print {
+  .rk-footer,
+  .rk-button-row,
+  .rk-stepper-nav {
+    display: none;
+  }
+}
+
+.rk-next-steps {
+  margin-bottom: 8px;
+}
+
+.rk-next-steps ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+.rk-next-steps li {
+  margin-bottom: 6px;
+}

@@ -218,8 +218,7 @@ body {
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.12), transparent 70%),
     radial-gradient(ellipse 60% 40% at 85% 45%, rgba(168, 85, 247, 0.1), transparent 60%),
     radial-gradient(ellipse 70% 50% at 15% 65%, rgba(34, 211, 238, 0.08), transparent 60%),
-    linear-gradient(180deg, rgba(6, 9, 19, 0.52) 0%, rgba(6, 9, 19, 0.12) 35%, rgba(6, 9, 19, 0.22) 65%, rgba(6, 9, 19, 0.65) 100%),
-    url('./assets/illustrations/ambient_backdrop_dark.jpg?v=3');
+    linear-gradient(180deg, rgba(6, 9, 19, 0.52) 0%, rgba(6, 9, 19, 0.12) 35%, rgba(6, 9, 19, 0.22) 65%, rgba(6, 9, 19, 0.65) 100%);
   background-size: cover;
   background-position: center center;
   background-attachment: fixed;
@@ -229,8 +228,7 @@ body {
 [data-theme="light"] body {
   background-color: #f8fafc;
   background-image:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.88) 100%),
-    url('./assets/illustrations/ambient_backdrop_light.jpg?v=3');
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.88) 100%);
   background-size: cover;
   background-position: center top;
   background-attachment: fixed;

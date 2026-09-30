@@ -15,4 +15,5 @@ lerna-debug.log*
 server/uploads/
 .claude/
 docs/
-
+server/tmp/
+.env.production

@@ -12,7 +12,7 @@ function describedBy(id: string, hint?: string, error?: string) {
   return [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
 }
 
-const LabelText: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => (
+export const LabelText: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => (
   <>
     {label}
     {required ? <span className="rk-req" aria-hidden="true">*</span> : <span className="rk-opt"> (optional)</span>}
@@ -20,7 +20,7 @@ const LabelText: React.FC<{ label: string; required?: boolean }> = ({ label, req
   </>
 );
 
-const HelpAndError: React.FC<{ id: string; hint?: string; error?: string }> = ({ id, hint, error }) => (
+export const HelpAndError: React.FC<{ id: string; hint?: string; error?: string }> = ({ id, hint, error }) => (
   <>
     {hint && <p id={`${id}-hint`} className="rk-hint">{hint}</p>}
     {error && <p id={`${id}-error`} className="rk-error" role="alert">{error}</p>}

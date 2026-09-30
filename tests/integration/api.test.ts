@@ -173,7 +173,7 @@ describe('Submitting the form', () => {
     const noOccupation = validPurchaserForm();
     noOccupation.parties[0] = { ...noOccupation.parties[0], occupation: '' };
     assert.equal((await b.call('POST', '/api/intake', { formData: noOccupation, telemetry: {} })).status, 400);
-    const noAuthority = validPurchaserForm({ declaration: { coolingOffAcknowledged: true, authorityToAct: false, signedName: 'x', signedDate: '2026-01-01' } });
+    const noAuthority = validPurchaserForm({ declaration: { coolingOffAcknowledged: true, authorityToAct: false, signedName: 'x', signedDate: '2026-01-01', signatureDataUrl: 'data:image/png;base64,abc' } });
     const r = await b.call('POST', '/api/intake', { formData: noAuthority, telemetry: {} });
     assert.equal(r.status, 400);
     assert.match(r.body.message, /authorise/i);

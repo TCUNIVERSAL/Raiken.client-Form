@@ -48,8 +48,8 @@ export const fakeLiveSign: {
 export function validPurchaserForm(overrides: Record<string, any> = {}) {
   const today = new Date();
   const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const person = (id: string, first: string, email: string, mobile: string) => ({
-    id, firstName: first, middleName: '', lastName: 'Tester', dob: '1985-03-12', email, mobile,
+  const person = (id: string, first: string, email: string, mobile: string, phoneCountryCode = '+61') => ({
+    id, firstName: first, middleName: '', lastName: 'Tester', dob: '1985-03-12', email, mobile, phoneCountryCode,
     occupation: 'Engineer', residencyStatus: 'Australian Citizen', sameAddressAsPrevious: false,
     addressLine1: '160 Hampstead Road', addressLine2: '', suburb: 'Broadview', state: 'SA', postcode: '5083', country: 'Australia',
     idDocuments: []
@@ -59,8 +59,8 @@ export function validPurchaserForm(overrides: Record<string, any> = {}) {
     roleConfirmed: true,
     partyCount: 2,
     parties: [
-      person('p1', 'Dhruvil', TEST_EMAILS.purchaser1, '0412 345 678'),
-      person('p2', 'Vatsal', TEST_EMAILS.purchaser2, '+91 98765 43210')
+      person('p1', 'Dhruvil', TEST_EMAILS.purchaser1, '0412 345 678', '+61'),
+      person('p2', 'Vatsal', TEST_EMAILS.purchaser2, '98765 43210', '+91')
     ],
     property: { addressLine1: '12 King William Street', suburb: 'Adelaide', state: 'SA', postcode: '5000', purchasePrice: '650000', settlementDate: '', intendedUse: 'To live in', ownershipType: 'Joint Tenants' },
     finance: {
@@ -68,7 +68,7 @@ export function validPurchaserForm(overrides: Record<string, any> = {}) {
       paysByElectronicTransfer: true, paysByCash: true, cashAmount: '20000', paysByVirtualAssets: false, virtualAssetsAmount: '', paysByOther: false, otherPaymentDetails: ''
     },
     stampDuty: { reliefEligible: 'No', firstHomeBuyer: '', propertyType: '', contractSignedOnOrAfter6Jul2024: '', contractSignedBetween15Jun2023And5Jul2024: '', underPriceThreshold: '', meetsEligibilityCriteria: '', notes: '' },
-    declaration: { coolingOffAcknowledged: true, authorityToAct: true, signedName: 'Dhruvil Tester', signedDate: iso },
+    declaration: { coolingOffAcknowledged: true, authorityToAct: true, signedName: 'Dhruvil Tester', signedDate: iso, signatureDataUrl: 'data:image/png;base64,iVBOR' },
     howDidYouHear: 'Google search',
     idDocuments: [],
     ...overrides

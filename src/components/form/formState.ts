@@ -38,6 +38,7 @@ export function createParty(id: string = newPartyId()): PartyFormData {
     dob: '',
     email: '',
     mobile: '',
+    phoneCountryCode: '+61',
     addressLine1: '',
     addressLine2: '',
     suburb: '',
@@ -95,7 +96,8 @@ export function createInitialFormData(): ClientIntakeFormData {
       coolingOffAcknowledged: false,
       authorityToAct: false,
       signedName: '',
-      signedDate: todayIso()
+      signedDate: todayIso(),
+      signatureDataUrl: ''
     },
     howDidYouHear: '',
     idDocuments: []

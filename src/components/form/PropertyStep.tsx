@@ -22,7 +22,7 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
   const isPurchaser = formData.role === 'Purchaser';
   const ok = (id: string, value: string) => Boolean(value.trim()) && !live[id];
   const moneyOnly = (v: string) => v.replace(/[^\d.]/g, '');
-  const showBanker = isPurchaser && (finance.mortgageRequired === 'Yes' || finance.mortgageRequired === 'Maybe');
+
 
   return (
     <>
@@ -85,7 +85,7 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
           />
         )}
 
-        {isPurchaser && formData.parties.length > 1 && (
+        {isPurchaser && (
           <ChoiceCards
             id="property-ownershipType"
             label="We would like to own the property as"
@@ -120,22 +120,30 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
           onChange={v => onFinanceChange({ mortgageRequired: v as FinanceFormData['mortgageRequired'] })}
         />
 
-        {showBanker && (
+        {isPurchaser && (
           <>
             <p className="rk-question">My banker / mortgage broker details are <span className="rk-opt">(optional)</span></p>
-            <TextField id="finance-brokerOrBankerName" label="Name" placeholder="e.g. Sarah Jenkins"
-              value={finance.brokerOrBankerName} valid={ok('finance-brokerOrBankerName', finance.brokerOrBankerName)}
-              onChange={v => onFinanceChange({ brokerOrBankerName: v })} />
-            <TextField id="finance-brokerPhone" type="tel" inputMode="tel" label="Contact number" placeholder="e.g. 0412 345 678" maxLength={20}
-              value={finance.brokerPhone} error={errors['finance-brokerPhone']} valid={ok('finance-brokerPhone', finance.brokerPhone)}
-              onChange={v => onFinanceChange({ brokerPhone: v })} />
-            <TextField id="finance-brokerEmail" type="email" inputMode="email" label="Email" placeholder="e.g. sarah@broker.com.au"
-              value={finance.brokerEmail} error={errors['finance-brokerEmail']} valid={ok('finance-brokerEmail', finance.brokerEmail)}
-              onChange={v => onFinanceChange({ brokerEmail: v })} />
-            <TextField id="finance-lenderName" label="Bank / company name" placeholder="e.g. Commonwealth Bank"
-              value={finance.lenderName} valid={ok('finance-lenderName', finance.lenderName)}
-              onChange={v => onFinanceChange({ lenderName: v })} />
+            <div className="rk-row">
+              <TextField id="finance-brokerOrBankerName" label="Name" placeholder="e.g. Sarah Jenkins"
+                value={finance.brokerOrBankerName} valid={ok('finance-brokerOrBankerName', finance.brokerOrBankerName)}
+                onChange={v => onFinanceChange({ brokerOrBankerName: v })} />
+              <TextField id="finance-brokerPhone" type="tel" inputMode="tel" label="Contact number" placeholder="e.g. 0412 345 678" maxLength={20}
+                value={finance.brokerPhone} error={errors['finance-brokerPhone']} valid={ok('finance-brokerPhone', finance.brokerPhone)}
+                onChange={v => onFinanceChange({ brokerPhone: v })} />
+            </div>
+            <div className="rk-row">
+              <TextField id="finance-brokerEmail" type="email" inputMode="email" label="E-mail address" placeholder="e.g. sarah@broker.com.au"
+                value={finance.brokerEmail} error={errors['finance-brokerEmail']} valid={ok('finance-brokerEmail', finance.brokerEmail)}
+                onChange={v => onFinanceChange({ brokerEmail: v })} />
+              <TextField id="finance-lenderName" label="Company name" placeholder="e.g. Commonwealth Bank"
+                value={finance.lenderName} valid={ok('finance-lenderName', finance.lenderName)}
+                onChange={v => onFinanceChange({ lenderName: v })} />
+            </div>
             <Suggestions items={BANKS} current={finance.lenderName} onPick={v => onFinanceChange({ lenderName: v })} />
+            <TextField id="howDidYouHear" label="How did you hear about us?" placeholder="e.g. Google search"
+              value={formData.howDidYouHear} valid={Boolean(formData.howDidYouHear.trim())}
+              onChange={onHowDidYouHearChange} />
+            <Suggestions items={HEARD_FROM} current={formData.howDidYouHear} onPick={onHowDidYouHearChange} />
           </>
         )}
 
@@ -192,17 +200,7 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
         )}
       </section>
 
-      {isPurchaser && (
-        <section className="rk-panel" aria-labelledby="heard-title">
-          <div className="rk-panel-head">
-            <h2 id="heard-title" className="rk-panel-title">One last thing</h2>
-          </div>
-          <TextField id="howDidYouHear" label="How did you hear about us?" placeholder="e.g. Google search"
-            value={formData.howDidYouHear} valid={Boolean(formData.howDidYouHear.trim())}
-            onChange={onHowDidYouHearChange} />
-          <Suggestions items={HEARD_FROM} current={formData.howDidYouHear} onPick={onHowDidYouHearChange} />
-        </section>
-      )}
+
     </>
   );
 };

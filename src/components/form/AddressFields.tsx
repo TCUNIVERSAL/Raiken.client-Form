@@ -11,17 +11,13 @@ interface AddressFieldsProps {
   onChange: (patch: Partial<Address>) => void;
 }
 
-const POSTCODE_LABELS: Record<string, { label: string; placeholder: string }> = {
-  Australia: { label: 'Postcode', placeholder: 'e.g. 5083' },
-  India: { label: 'PIN code', placeholder: 'e.g. 560001' },
-  'United States': { label: 'ZIP code', placeholder: 'e.g. 90210' }
-};
+const POSTCODE_LABEL = { label: 'Postcode', placeholder: 'e.g. 5083' };
 
 export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address, errors, live, onChange }) => {
   const id = (key: string) => `${idPrefix}-${key}`;
   const ok = (key: string, value: string) => Boolean(value.trim()) && !live[id(key)];
   const isAustralia = address.country === 'Australia';
-  const postcode = POSTCODE_LABELS[address.country] || { label: 'Postcode / ZIP', placeholder: 'e.g. SW1A 1AA' };
+  const postcode = POSTCODE_LABEL;
 
   return (
     <>
@@ -98,16 +94,16 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address,
         )}
         <TextField
           id={id('postcode')}
-          label={isAustralia ? 'Postcode / PIN code' : postcode.label}
+          label={postcode.label}
           required
-          placeholder={isAustralia ? 'e.g. 5083' : postcode.placeholder}
+          placeholder={postcode.placeholder}
           autoComplete="postal-code"
-          inputMode={isAustralia || address.country === 'India' ? 'numeric' : 'text'}
-          maxLength={isAustralia ? 4 : 10}
+          inputMode="numeric"
+          maxLength={4}
           value={address.postcode}
           error={errors[id('postcode')]}
           valid={ok('postcode', address.postcode)}
-          onChange={v => onChange({ postcode: isAustralia ? v.replace(/\D/g, '').slice(0, 4) : v })}
+          onChange={v => onChange({ postcode: v.replace(/\D/g, '').slice(0, 4) })}
         />
       </div>
     </>

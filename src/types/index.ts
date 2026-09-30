@@ -25,6 +25,8 @@ export interface PartyFormData {
   dob: string;
   email: string;
   mobile: string;
+  /** Country dial code, e.g. '+61' for Australia */
+  phoneCountryCode: string;
   addressLine1: string;
   addressLine2: string;
   suburb: string;
@@ -90,6 +92,8 @@ export interface DeclarationFormData {
   authorityToAct: boolean;
   signedName: string;
   signedDate: string;
+  /** PNG data-URL of the client's drawn signature. */
+  signatureDataUrl: string;
 }
 
 export interface ClientIntakeFormData {

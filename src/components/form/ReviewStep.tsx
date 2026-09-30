@@ -5,6 +5,7 @@ import { CheckboxCard, DateField, TextField, TickIcon } from './fields.js';
 import { formatFileSize } from './FileUpload.js';
 import { formatAddress, pickAddress, StepKey } from './formState.js';
 import { partyDisplayName } from './PeopleStep.js';
+import { SignaturePad } from './SignaturePad.js';
 
 export interface ReviewProblem {
   step: StepKey;
@@ -113,9 +114,9 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         <Row label={isPurchaser ? 'Purchase price' : 'Sale price'} value={money(property.purchasePrice)} />
         <Row label="Settlement" value={formatDateLong(property.settlementDate) || 'Not known yet'} />
         {isPurchaser && <Row label="Property is for" value={property.intendedUse} />}
-        {isPurchaser && formData.parties.length > 1 && <Row label="Ownership" value={property.ownershipType} />}
+        {isPurchaser && <Row label="Ownership" value={property.ownershipType} />}
         <Row label={isPurchaser ? 'Taking a mortgage' : 'Mortgage on property'} value={finance.mortgageRequired} />
-        {isPurchaser && finance.mortgageRequired !== 'No' && finance.mortgageRequired !== '' && (
+        {isPurchaser && (
           <Row label="Banker / broker" value={[finance.brokerOrBankerName, finance.lenderName, finance.brokerPhone, finance.brokerEmail].filter(Boolean).join(' · ')} />
         )}
         {isPurchaser && <Row label="Paying by" value={[
@@ -166,28 +167,39 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         >
           I/We authorise Raikan Corporation to act as our conveyancer for this property:
         </CheckboxCard>
-        <TextField
-          id="declaration-signedName"
-          label="Your full name"
-          required
-          placeholder="e.g. John Michael Smith"
-          autoComplete="name"
-          value={declaration.signedName}
-          error={errors['declaration-signedName']}
-          valid={Boolean(declaration.signedName.trim()) && !live['declaration-signedName']}
-          onChange={v => onDeclarationChange({ signedName: v })}
-        />
-        <DateField
-          id="declaration-signedDate"
-          label="Date"
-          required
-          min={signedDateMin()}
-          max={todayIso()}
-          value={declaration.signedDate}
-          error={errors['declaration-signedDate']}
-          valid={Boolean(declaration.signedDate) && !live['declaration-signedDate']}
-          onChange={v => onDeclarationChange({ signedDate: v })}
-        />
+
+        <div className="rk-signature-row">
+          <SignaturePad
+            id="declaration-signature"
+            value={declaration.signatureDataUrl}
+            error={errors['declaration-signatureDataUrl']}
+            onChange={dataUrl => onDeclarationChange({ signatureDataUrl: dataUrl })}
+          />
+          <div className="rk-signature-details">
+            <TextField
+              id="declaration-signedName"
+              label="Your name"
+              required
+              placeholder="e.g. John Michael Smith"
+              autoComplete="name"
+              value={declaration.signedName}
+              error={errors['declaration-signedName']}
+              valid={Boolean(declaration.signedName.trim()) && !live['declaration-signedName']}
+              onChange={v => onDeclarationChange({ signedName: v })}
+            />
+            <DateField
+              id="declaration-signedDate"
+              label="Date"
+              required
+              min={signedDateMin()}
+              max={todayIso()}
+              value={declaration.signedDate}
+              error={errors['declaration-signedDate']}
+              valid={Boolean(declaration.signedDate) && !live['declaration-signedDate']}
+              onChange={v => onDeclarationChange({ signedDate: v })}
+            />
+          </div>
+        </div>
         <RaikanDetails />
       </section>
     </>

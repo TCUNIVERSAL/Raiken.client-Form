@@ -3,6 +3,7 @@ import { ClientIntakeFormData, PartyFormData, UploadedDocument } from '../../typ
 import { DOB_MIN, dobMax, isPartyDetailsComplete } from '../../utils/validation.js';
 import { MAX_PARTIES } from './formState.js';
 import { ChoiceCards, DateField, Suggestions, TextField, TickIcon } from './fields.js';
+import { PhoneField } from './PhoneField.js';
 import { FileUpload } from './FileUpload.js';
 
 interface PeopleStepProps {
@@ -120,9 +121,12 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
         <TextField id={id('lastName')} label="Last name" required placeholder="e.g. Smith" autoComplete="family-name"
           hint="Please write your name exactly as it appears on your ID."
           value={party.lastName} error={errors[id('lastName')]} valid={ok('lastName')} onChange={update('lastName')} />
-        <TextField id={id('mobile')} type="tel" inputMode="tel" label="Phone" required
-          placeholder="e.g. 0412 345 678" autoComplete="tel" maxLength={20}
-          value={party.mobile} error={errors[id('mobile')]} valid={ok('mobile')} onChange={update('mobile')} />
+        <PhoneField id={id('mobile')} label="Phone" required
+          countryCode={party.phoneCountryCode || '+61'}
+          phoneNumber={party.mobile}
+          onCountryCodeChange={update('phoneCountryCode')}
+          onPhoneChange={update('mobile')}
+          error={errors[id('mobile')]} valid={ok('mobile')} />
         <TextField id={id('email')} type="email" inputMode="email" label="Email" required
           placeholder="e.g. john.smith@example.com" autoComplete="email"
           hint={partyIndex === 0 ? 'We will send your confirmation to this email.' : undefined}
@@ -142,7 +146,6 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
         />
 
         <TextField id={id('occupation')} label="Occupation" required placeholder="e.g. Nurse" autoComplete="organization-title"
-          hint="Needed for the identity and anti-money-laundering check."
           value={party.occupation} error={errors[id('occupation')]} valid={ok('occupation')} onChange={update('occupation')} />
         <Suggestions items={OCCUPATION_SUGGESTIONS} current={party.occupation} onPick={update('occupation')} />
 

@@ -62,11 +62,28 @@ export function formatDateLong(value: string): string {
 }
 
 // ─── Field-level checks ──────────────────────────────────────────────────────
-function checkPhone(value: string, required = true): string | null {
+
+/** Expected digit ranges for national phone numbers (excluding the country code). */
+const PHONE_DIGIT_RULES: Record<string, { min: number; max: number }> = {
+  '+61':  { min: 9, max: 10 },   // Australia: 04xx xxx xxx or 0x xxxx xxxx
+  '+64':  { min: 8, max: 10 },   // New Zealand
+  '+44':  { min: 10, max: 11 },  // UK
+  '+1':   { min: 10, max: 10 },  // US / Canada
+  '+91':  { min: 10, max: 10 },  // India
+  '+86':  { min: 11, max: 11 },  // China
+  '+63':  { min: 10, max: 10 },  // Philippines
+};
+const DEFAULT_PHONE_RULE = { min: 7, max: 15 };
+
+function checkPhone(value: string, countryCode: string = '+61', required = true): string | null {
   if (!value.trim()) return required ? 'Please enter a contact number.' : null;
-  if (!/^\+?[\d\s()\-.]+$/.test(value.trim())) return 'Use numbers only, for example 0412 345 678.';
+  if (!/^[\d\s()\-.]+$/.test(value.trim())) return 'Use numbers only, for example 0412 345 678.';
   const digits = value.replace(/[\s()+\-.]/g, '');
-  if (digits.length < 8 || digits.length > 15) return 'The number should be 8 to 15 digits long.';
+  const rule = PHONE_DIGIT_RULES[countryCode] || DEFAULT_PHONE_RULE;
+  if (digits.length < rule.min || digits.length > rule.max) {
+    if (rule.min === rule.max) return `The number should be ${rule.min} digits long.`;
+    return `The number should be ${rule.min} to ${rule.max} digits long.`;
+  }
   return null;
 }
 
@@ -76,13 +93,10 @@ function checkEmail(value: string, required = true): string | null {
   return null;
 }
 
-export function checkPostcode(value: string, country: string): string | null {
+export function checkPostcode(value: string, _country: string): string | null {
   const v = value.trim();
   if (!v) return 'Please enter a postcode.';
-  if (country === 'Australia' && !/^\d{4}$/.test(v)) return 'Australian postcodes have 4 digits, for example 5083.';
-  if (country === 'India' && !/^\d{6}$/.test(v)) return 'Indian PIN codes have 6 digits, for example 560001.';
-  if (country === 'United States' && !/^\d{5}(-\d{4})?$/.test(v)) return 'US ZIP codes look like 90210 or 90210-1234.';
-  if (!/^[A-Za-z0-9 -]{3,10}$/.test(v)) return 'Please enter a valid postcode (3 to 10 letters or numbers).';
+  if (!/^\d{4}$/.test(v)) return 'Australian postcodes have 4 digits, for example 5083.';
   return null;
 }
 
@@ -112,7 +126,7 @@ export function validatePartyDetails(p: PartyFormData): FieldErrors {
   const e: FieldErrors = {};
   set(e, 'firstName', p.firstName.trim() ? null : 'Please enter the first name.');
   set(e, 'lastName', p.lastName.trim() ? null : 'Please enter the last name (surname).');
-  set(e, 'mobile', checkPhone(p.mobile));
+  set(e, 'mobile', checkPhone(p.mobile, p.phoneCountryCode || '+61'));
   set(e, 'email', checkEmail(p.email));
   set(e, 'dob', checkDate(p.dob, DOB_MIN, dobMax(), {
     empty: 'Please choose the date of birth.',
@@ -151,12 +165,12 @@ export function validateProperty(data: ClientIntakeFormData): FieldErrors {
 
   if (isPurchaser) {
     set(e, 'property.intendedUse', choose(property.intendedUse, 'Please choose what the property is for.'));
-    if (data.parties.length > 1) set(e, 'property.ownershipType', choose(property.ownershipType, 'Please choose how you would like to own the property.'));
+    set(e, 'property.ownershipType', choose(property.ownershipType, 'Please choose how you would like to own the property.'));
   }
 
   set(e, 'finance.mortgageRequired', choose(finance.mortgageRequired, isPurchaser ? 'Please answer: are you taking a mortgage?' : 'Please answer: is there a mortgage on the property?'));
-  if (isPurchaser && finance.mortgageRequired && finance.mortgageRequired !== 'No') {
-    set(e, 'finance.brokerPhone', checkPhone(finance.brokerPhone, false));
+  if (isPurchaser) {
+    set(e, 'finance.brokerPhone', checkPhone(finance.brokerPhone, '+61', false));
     set(e, 'finance.brokerEmail', checkEmail(finance.brokerEmail, false));
   }
   if (isPurchaser) {
@@ -226,6 +240,7 @@ export function validateDeclaration(data: ClientIntakeFormData): FieldErrors {
     tooEarly: 'Please use today\'s date.',
     tooLate: 'The date cannot be in the future.'
   }));
+  if (!d.signatureDataUrl) e['declaration.signatureDataUrl'] = 'Please draw your signature.';
   return e;
 }
 

@@ -38,10 +38,11 @@ describe('Person details validation', () => {
   });
 
   test('TC-VAL-05 phone numbers: too short, letters rejected; AU and international accepted', () => {
-    assert.ok(validatePartyDetails({ ...validParty(), mobile: '1234' }).mobile);
-    assert.ok(validatePartyDetails({ ...validParty(), mobile: '04ab 345 678' }).mobile);
-    assert.equal(validatePartyDetails({ ...validParty(), mobile: '0412 345 678' }).mobile, undefined);
-    assert.equal(validatePartyDetails({ ...validParty(), mobile: '+91 98765 43210' }).mobile, undefined);
+    assert.ok(validatePartyDetails({ ...validParty(), mobile: '1234' }).mobile, 'too few digits for AU');
+    assert.ok(validatePartyDetails({ ...validParty(), mobile: '04ab 345 678' }).mobile, 'letters not allowed');
+    assert.equal(validatePartyDetails({ ...validParty(), mobile: '0412 345 678' }).mobile, undefined, 'valid AU');
+    assert.equal(validatePartyDetails({ ...validParty(), mobile: '98765 43210', phoneCountryCode: '+91' }).mobile, undefined, 'valid IN');
+    assert.ok(validatePartyDetails({ ...validParty(), mobile: '98765', phoneCountryCode: '+91' }).mobile, 'too short for IN');
   });
 
   test('TC-VAL-06 date of birth must make the person 18+ and be a real date', () => {
@@ -62,13 +63,14 @@ describe('Address validation', () => {
     assert.deepEqual(validatePartyAddress(validParty()), {});
   });
 
-  test('TC-VAL-09 postcode rules differ by country', () => {
+  test('TC-VAL-09 postcode always enforces Australian 4-digit format', () => {
     assert.ok(checkPostcode('508', 'Australia'));
     assert.equal(checkPostcode('5083', 'Australia'), null);
-    assert.ok(checkPostcode('5083', 'India'));
-    assert.equal(checkPostcode('560001', 'India'), null);
-    assert.equal(checkPostcode('90210-1234', 'United States'), null);
-    assert.equal(checkPostcode('SW1A 1AA', 'United Kingdom'), null);
+    // All countries now enforce 4-digit Australian postcodes
+    assert.ok(checkPostcode('560001', 'India'), '6-digit Indian PIN code should be rejected');
+    assert.equal(checkPostcode('5083', 'India'), null, '4-digit postcode accepted even for India');
+    assert.ok(checkPostcode('90210-1234', 'United States'), 'US ZIP+4 should be rejected');
+    assert.ok(checkPostcode('SW1A 1AA', 'United Kingdom'), 'UK postcode should be rejected');
   });
 
   test('TC-VAL-10 missing street / suburb / state are reported', () => {
@@ -81,7 +83,7 @@ describe('Property, mortgage and payment validation', () => {
   const form = () => {
     const f = createInitialFormData();
     f.parties = [validParty()];
-    Object.assign(f.property, { addressLine1: '12 King William St', suburb: 'Adelaide', postcode: '5000', purchasePrice: '650000', intendedUse: 'To live in' });
+    Object.assign(f.property, { addressLine1: '12 King William St', suburb: 'Adelaide', postcode: '5000', purchasePrice: '650000', intendedUse: 'To live in', ownershipType: 'Sole Owner' });
     Object.assign(f.finance, { mortgageRequired: 'No', paysByElectronicTransfer: true });
     return f;
   };
@@ -103,11 +105,12 @@ describe('Property, mortgage and payment validation', () => {
     assert.ok(e['finance.cashAmount'] && e['finance.virtualAssetsAmount'] && e['finance.otherPaymentDetails']);
   });
 
-  test('TC-VAL-14 ownership type is required only when there are 2+ purchasers', () => {
+  test('TC-VAL-14 ownership type is required for all purchasers', () => {
     const f = form();
+    f.property.ownershipType = '';
+    assert.ok(validateProperty(f)['property.ownershipType'], 'ownership required even for single purchaser');
+    f.property.ownershipType = 'Joint Tenants';
     assert.equal(validateProperty(f)['property.ownershipType'], undefined);
-    f.parties = [validParty(), { ...validParty(), id: 'p2' }];
-    assert.ok(validateProperty(f)['property.ownershipType']);
   });
 
   test('TC-VAL-15 settlement date cannot be in the past', () => {
@@ -159,7 +162,8 @@ describe('Declaration validation', () => {
     const f = createInitialFormData();
     const e = validateDeclaration(f);
     assert.ok(e['declaration.coolingOffAcknowledged'] && e['declaration.authorityToAct'] && e['declaration.signedName']);
-    f.declaration = { coolingOffAcknowledged: true, authorityToAct: true, signedName: 'Dhruvil Patel', signedDate: todayIso() };
+    assert.ok(e['declaration.signatureDataUrl'], 'signature is required');
+    f.declaration = { coolingOffAcknowledged: true, authorityToAct: true, signedName: 'Dhruvil Patel', signedDate: todayIso(), signatureDataUrl: 'data:image/png;base64,abc' };
     assert.deepEqual(validateDeclaration(f), {});
     f.declaration.signedDate = addYearsIso(1);
     assert.ok(validateDeclaration(f)['declaration.signedDate'], 'future date is rejected');
@@ -168,7 +172,7 @@ describe('Declaration validation', () => {
   test('TC-VAL-21 vendors only need the authority box (no cooling-off)', () => {
     const f = createInitialFormData();
     f.role = 'Vendor';
-    f.declaration = { coolingOffAcknowledged: false, authorityToAct: true, signedName: 'Vatsal', signedDate: todayIso() };
+    f.declaration = { coolingOffAcknowledged: false, authorityToAct: true, signedName: 'Vatsal', signedDate: todayIso(), signatureDataUrl: 'data:image/png;base64,abc' };
     assert.deepEqual(validateDeclaration(f), {});
   });
 });

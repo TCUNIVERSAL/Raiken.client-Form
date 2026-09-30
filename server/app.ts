@@ -302,7 +302,14 @@ app.post('/api/intake', async (req: Request, res: Response) => {
       property: formData.property || {},
       finance: formData.finance || {},
       stamp_duty: formData.stampDuty || {},
-      id_documents: formData.idDocuments || []
+      id_documents: formData.idDocuments || [],
+      ownership_type: formData.property?.ownershipType || null,
+      broker_name: formData.finance?.brokerOrBankerName || null,
+      broker_phone: formData.finance?.brokerPhone || null,
+      broker_email: formData.finance?.brokerEmail || null,
+      broker_company: formData.finance?.lenderName || null,
+      how_did_you_hear: formData.howDidYouHear || null,
+      signature_data: formData.declaration?.signatureDataUrl || null
     });
     matterReference = intakeRecord?.matter_reference || matterReference;
 

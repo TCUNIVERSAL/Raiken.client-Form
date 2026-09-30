@@ -108,7 +108,8 @@ export function buildEnvelopePayload(intake: { matterReference: string; role: st
   const customers = (intake.parties || []).map((p: any, i: number) => {
     const firstName = text(p.firstName);
     const lastName = text(p.lastName);
-    const { countryCodeId, mobileNumber } = splitMobile(p.mobile, opts.countryCodes);
+    const rawPhone = p.phoneCountryCode ? `${text(p.phoneCountryCode)}${text(p.mobile)}` : text(p.mobile);
+    const { countryCodeId, mobileNumber } = splitMobile(rawPhone, opts.countryCodes);
     return {
       index: i + 1,
       requiresPep: true,

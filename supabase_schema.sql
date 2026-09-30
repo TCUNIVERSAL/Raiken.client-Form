@@ -81,6 +81,15 @@ ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS aml_status TEXT
 ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS aml_risk_rating TEXT;
 ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 
+-- Ownership, broker/banker, and referral fields (always collected for purchasers)
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS ownership_type TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_name TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_phone TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_email TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS broker_company TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS how_did_you_hear TEXT;
+ALTER TABLE public.conveyancing_intakes ADD COLUMN IF NOT EXISTS signature_data TEXT;
+
 -- ------------------------------------------------------------------------------
 -- 3b. Identity verification per person (one row for each purchaser / vendor)
 --     status: unverified -> verified (LiveSign ID check passed) | failed | needs_review

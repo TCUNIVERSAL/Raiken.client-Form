@@ -20,6 +20,24 @@ export const COUNTRIES = [
   'Other'
 ];
 
+export interface SaSuburbOption {
+  suburb: string;
+  postcode: string;
+}
+
+export const POPULAR_SA_SUBURBS: SaSuburbOption[] = [
+  { suburb: 'Broadview', postcode: '5083' },
+  { suburb: 'Adelaide', postcode: '5000' },
+  { suburb: 'Prospect', postcode: '5082' },
+  { suburb: 'North Adelaide', postcode: '5006' },
+  { suburb: 'Norwood', postcode: '5067' },
+  { suburb: 'Mawson Lakes', postcode: '5095' },
+  { suburb: 'Glenelg', postcode: '5045' },
+  { suburb: 'Unley', postcode: '5061' },
+  { suburb: 'Marion', postcode: '5043' },
+  { suburb: 'Mount Barker', postcode: '5251' }
+];
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // ─── Date helpers (all dates are stored as YYYY-MM-DD strings) ───────────────

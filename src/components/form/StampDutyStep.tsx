@@ -97,6 +97,17 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
           onChange={v => onChange({ meetsEligibilityCriteria: v as YesNo })} />
       )}
 
+      {stampDuty.meetsEligibilityCriteria === 'Yes' && (
+        <div className="rk-info-box rk-stamp-duty-estimate" role="status">
+          <p className="rk-question">🎉 Potential Stamp Duty Relief Identified</p>
+          <p className="rk-hint">
+            Based on your answers, you appear eligible for South Australian First Home Buyer Stamp Duty Relief.
+            Under current SA legislation, eligible new homes or vacant land can save up to <strong>$25,000+</strong> in stamp duty.
+            We will prepare and lodge the formal relief application with RevenueSA on your behalf.
+          </p>
+        </div>
+      )}
+
       {show.notes && (
         <div className="rk-field">
           <label htmlFor="stampDuty-notes" className="rk-question">

@@ -106,86 +106,6 @@ html[data-theme] body {
   color: var(--rk-text);
 }
 
-/* ─── Sticky Brand Header ─────────────────────────────────────────────────── */
-.rk-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--rk-border);
-  box-shadow: var(--rk-shadow-xs);
-}
-
-.rk-header-inner {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.rk-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rk-brand-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--rk-cyan) 0%, var(--rk-primary) 100%);
-  color: #fff;
-  font-weight: 800;
-  font-size: 1.05rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(10, 163, 220, 0.3);
-  user-select: none;
-}
-
-.rk-brand-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.rk-brand-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--rk-primary);
-  line-height: 1.2;
-}
-
-.rk-brand-sub {
-  font-size: 0.75rem;
-  color: var(--rk-muted);
-  font-weight: 500;
-}
-
-.rk-header-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rk-header-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  background: var(--rk-primary-soft);
-  border: 1px solid rgba(27, 47, 99, 0.12);
-  border-radius: var(--rk-radius-pill);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--rk-primary);
-}
-
 /* ─── Page frame ────────────────────────────────────────────────────────── */
 .rk-main {
   flex: 1;
@@ -240,7 +160,7 @@ html[data-theme] body {
 /* Equal columns: circle on top, label centred underneath, a line joining the circles */
 .rk-stepper {
   list-style: none;
-  display: flex;
+  display: flex !important;
   margin: 0;
   padding: 0;
 }
@@ -294,6 +214,7 @@ html[data-theme] body {
 }
 
 .rk-step-label {
+  display: block !important;
   padding: 0 4px;
   overflow-wrap: anywhere;
   font-weight: 500;
@@ -324,10 +245,10 @@ html[data-theme] body {
   box-shadow: 0 2px 8px rgba(10, 163, 220, 0.25);
 }
 
-/* Mobile progress bar */
+/* Mobile progress bar — hidden on desktop/tablet */
 .rk-step-mobile {
-  display: none;
-  margin: 4px 0 0;
+  display: none !important;
+  margin: 0;
 }
 
 .rk-step-mobile-bar {
@@ -740,7 +661,7 @@ html[data-theme] body {
   padding: 28px 28px 12px;
 }
 
-/* Number-of-purchasers dropdown — sits at the top */
+/* ─── Number-of-parties Stepper Selector ─────────────────────────────────── */
 .rk-count-selector {
   width: 100%;
   margin-bottom: 28px;
@@ -748,10 +669,10 @@ html[data-theme] body {
 
 .rk-count-label {
   display: block;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--rk-text);
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   letter-spacing: -0.01em;
 }
 
@@ -761,21 +682,82 @@ html[data-theme] body {
   margin-left: 2px;
 }
 
-.rk-box.rk-count-box {
+.rk-stepper-control-row {
   display: flex;
   align-items: center;
-  min-height: 58px;
-  padding: 0 24px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.rk-app .rk-box.rk-count-box .rk-count-select {
-  grid-column: unset;
-  grid-row: unset;
-  width: 100%;
-  padding: 14px 28px 14px 0;
-  font-size: 1.125rem;
+.rk-stepper-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  background: #eff4fa;
+  border: 1px solid rgba(27, 47, 99, 0.08);
+  border-radius: 14px;
+  padding: 6px 8px;
+  box-shadow: var(--rk-shadow-xs);
+}
+
+.rk-stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(27, 47, 99, 0.12);
+  background: #ffffff;
+  color: var(--rk-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+  user-select: none;
+  padding: 0;
+}
+
+.rk-stepper-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: var(--rk-cyan);
+  color: var(--rk-cyan-dark);
+  box-shadow: 0 2px 6px rgba(10, 163, 220, 0.2);
+  transform: translateY(-1px);
+}
+
+.rk-stepper-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.rk-stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--rk-border);
+  box-shadow: none;
+}
+
+.rk-stepper-btn:focus-visible {
+  outline: 2.5px solid var(--rk-cyan) !important;
+  outline-offset: 2px !important;
+}
+
+.rk-stepper-count-num {
+  font-family: var(--rk-font);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  min-width: 28px;
+  text-align: center;
+  user-select: none;
+}
+
+.rk-stepper-text {
+  font-family: var(--rk-font);
+  font-size: 1.05rem;
   font-weight: 500;
   color: var(--rk-text);
+  letter-spacing: -0.01em;
 }
 
 /* Each person card */
@@ -1009,6 +991,43 @@ html[data-theme] body {
   margin-bottom: 4px;
 }
 
+/* Price preview badge */
+.rk-price-preview {
+  margin: -8px 0 16px;
+}
+
+.rk-price-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--rk-cyan-soft);
+  color: var(--rk-cyan-dark);
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 4px 12px;
+  border-radius: var(--rk-radius-pill);
+  border: 1px solid rgba(10, 163, 220, 0.2);
+}
+
+/* Settlement quick chips */
+.rk-settlement-quick {
+  margin-top: -6px;
+  margin-bottom: 20px;
+}
+
+/* Stamp duty estimate banner */
+.rk-stamp-duty-estimate {
+  background: linear-gradient(135deg, rgba(10, 163, 220, 0.08) 0%, rgba(27, 47, 99, 0.04) 100%) !important;
+  border: 1.5px solid var(--rk-cyan) !important;
+  margin: 18px 0;
+}
+
+.rk-stamp-duty-estimate .rk-question {
+  color: var(--rk-primary) !important;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
 /* ─── Suggestion chips ──────────────────────────────────────────────────── */
 .rk-suggestions {
   margin: -2px 0 14px;
@@ -1054,6 +1073,13 @@ html[data-theme] body {
   box-shadow: inset 0 0 0 1px var(--rk-primary);
 }
 
+/* Placeholder contrast for WCAG AA */
+.rk-app input::placeholder,
+.rk-app textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
 /* ─── Buttons ───────────────────────────────────────────────────────────── */
 .rk-btn {
   display: inline-flex;
@@ -1079,9 +1105,13 @@ html[data-theme] body {
 .rk-btn:focus-visible,
 .rk-link-button:focus-visible,
 .rk-chip:focus-visible,
-.rk-add-button:focus-visible {
-  outline: 3px solid var(--rk-primary-soft);
-  outline-offset: 2px;
+.rk-add-button:focus-visible,
+.rk-choice-card:focus-visible,
+.rk-check-card:focus-visible,
+.rk-app input:focus-visible,
+.rk-app textarea:focus-visible {
+  outline: 2.5px solid var(--rk-cyan) !important;
+  outline-offset: 2px !important;
 }
 
 .rk-btn:disabled {
@@ -1225,14 +1255,63 @@ html[data-theme] body {
   font-weight: 600;
 }
 
+/* ─── Compliance & Trust Badges ─────────────────────────────────────────── */
+.rk-compliance-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  background: var(--rk-success-soft);
+  border: 1px solid #bbf7d0;
+  border-radius: var(--rk-radius-md);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #14532d;
+}
+
+.rk-compliance-badge svg {
+  flex-shrink: 0;
+  color: var(--rk-success);
+  margin-top: 1px;
+}
+
+.rk-compliance-amber {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #78350f;
+}
+
+.rk-compliance-amber svg {
+  color: #d97706;
+}
+
+.rk-sof-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--rk-border);
+}
+
+.rk-suburb-quick {
+  margin-top: -6px;
+  margin-bottom: 12px;
+}
+
+.rk-suburb-quick .rk-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.825rem;
+}
+
 /* ─── Messages ──────────────────────────────────────────────────────────── */
 .rk-error-summary {
   background: var(--rk-surface);
   border: 1px solid var(--rk-danger);
   border-left-width: 5px;
-  border-radius: 4px;
+  border-radius: var(--rk-radius-md);
   padding: 16px 20px;
   margin-bottom: 20px;
+  box-shadow: var(--rk-shadow-sm);
 }
 
 .rk-error-summary-title {
@@ -1254,9 +1333,10 @@ html[data-theme] body {
   background: var(--rk-surface);
   border: 1px solid var(--rk-border);
   border-left: 5px solid var(--rk-cyan);
-  border-radius: 4px;
+  border-radius: var(--rk-radius-md);
   padding: 14px 18px;
   margin: 0 0 20px;
+  box-shadow: var(--rk-shadow-sm);
 }
 
 .rk-notice p {
@@ -1566,26 +1646,27 @@ html[data-theme] body {
     padding: 20px 14px 44px;
   }
 
-  .rk-header-inner {
-    padding: 10px 14px;
-  }
-
-  .rk-brand-sub {
-    display: none;
-  }
-
   .rk-stepper-nav {
     padding: 16px 18px;
     margin-bottom: 18px;
     border-radius: 16px;
   }
 
-  .rk-step .rk-step-label {
-    display: none;
+  .rk-step {
+    font-size: 0.8rem;
+    gap: 6px;
   }
 
-  .rk-step-mobile {
-    display: block;
+  .rk-step-dot {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .rk-step + .rk-step::before {
+    top: 13px;
+    left: calc(-50% + 18px);
+    right: calc(50% + 18px);
   }
 
   .rk-title {
@@ -1629,22 +1710,30 @@ html[data-theme] body {
 
   .rk-count-selector {
     width: 100%;
-    max-width: 100%;
+    margin-bottom: 22px;
   }
 
   .rk-count-label {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
+    margin-bottom: 10px;
   }
 
-  .rk-box.rk-count-box {
-    padding: 0 18px;
-    min-height: 54px;
-    border-radius: 16px;
+  .rk-stepper-control-row {
+    gap: 12px;
   }
 
-  .rk-app .rk-box.rk-count-box .rk-count-select {
-    padding: 12px 20px 12px 0;
-    font-size: 16px;
+  .rk-stepper-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .rk-stepper-count-num {
+    font-size: 1.25rem;
+    min-width: 24px;
+  }
+
+  .rk-stepper-text {
+    font-size: 0.95rem;
   }
 
   .rk-party {
@@ -1892,6 +1981,39 @@ html[data-theme] body {
   .rk-signature-pad,
   .rk-signature-upload-dropzone {
     height: 160px;
+  }
+}
+
+@media (max-width: 600px) {
+  .rk-stepper {
+    display: none !important;
+  }
+
+  .rk-step-mobile {
+    display: block !important;
+    margin: 0;
+  }
+
+  .rk-stepper-nav {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 14px;
+  }
+
+  .rk-chip {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 0.95rem;
+  }
+
+  .rk-choice-card {
+    min-height: 52px;
+    padding: 14px 16px;
+  }
+
+  .rk-nav .rk-btn {
+    min-height: 52px;
+    font-size: 1.05rem;
   }
 }
 

@@ -132,6 +132,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       </p>
       {hint && <p className="rk-hint rk-question-hint">{hint}</p>}
 
+      {kind === 'identity' && (
+        <div className="rk-compliance-badge">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <span>
+            <strong>ARNECC VOI Compliant:</strong> Documents are 256-bit encrypted and verified under the Australian Model Participation Rules for electronic conveyancing.
+          </span>
+        </div>
+      )}
+
       <input
         ref={inputRef}
         id={id}

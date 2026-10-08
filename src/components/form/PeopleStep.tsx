@@ -235,27 +235,44 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
     <section className="rk-panel rk-people-panel">
       {/* ─── Number selector ─── */}
       <div className="rk-count-selector">
-        <label htmlFor="partyCount" className="rk-count-label">
-          Number of {role} <span className="rk-req" aria-hidden="true">*</span>:
+        <label className="rk-count-label">
+          Number of {role}s <span className="rk-req" aria-hidden="true">*</span>:
         </label>
-        <div className="rk-box rk-count-box">
-          <select
-            id="partyCount"
-            className="rk-box-input rk-select rk-count-select"
-            value={String(Math.min(total, MAX_SELECTABLE))}
-            aria-required="true"
-            aria-label={`Number of ${role}`}
-            onChange={e => onSetPartyCount(Number(e.target.value))}
-          >
-            {Array.from({ length: Math.max(MAX_SELECTABLE, total) }, (_, i) => {
-              const num = i + 1;
-              return (
-                <option key={num} value={String(num)}>
-                  {num} {num === 1 ? role : `${role}s`}
-                </option>
-              );
-            })}
-          </select>
+        <div className="rk-stepper-control-row">
+          <div className="rk-stepper-control" role="group" aria-label={`Number of ${role}s`}>
+            <button
+              type="button"
+              className="rk-stepper-btn rk-stepper-btn-minus"
+              onClick={() => onSetPartyCount(Math.max(1, total - 1))}
+              disabled={total <= 1}
+              aria-label={`Decrease number of ${role.toLowerCase()}s`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+
+            <span className="rk-stepper-count-num" aria-live="polite" aria-atomic="true">
+              {total}
+            </span>
+
+            <button
+              type="button"
+              className="rk-stepper-btn rk-stepper-btn-plus"
+              onClick={() => onSetPartyCount(Math.min(MAX_SELECTABLE, total + 1))}
+              disabled={total >= MAX_SELECTABLE}
+              aria-label={`Increase number of ${role.toLowerCase()}s`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
+
+          <span className="rk-stepper-text">
+            {total} {total === 1 ? role.toLowerCase() : `${role.toLowerCase()}s`} on the contract
+          </span>
         </div>
       </div>
 

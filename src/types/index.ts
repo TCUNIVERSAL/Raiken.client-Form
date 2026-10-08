@@ -2,7 +2,7 @@ import { ClientTelemetry } from '../utils/tracker.js';
 
 export type ConveyancingRole = 'Purchaser' | 'Vendor';
 
-export type DocumentKind = 'identity';
+export type DocumentKind = 'identity' | 'source_of_funds';
 
 export type YesNo = 'Yes' | 'No' | '';
 
@@ -73,6 +73,8 @@ export interface FinanceFormData {
   virtualAssetsAmount: string;
   paysByOther: boolean;
   otherPaymentDetails: string;
+  /** Optional proof of funds documents for AML compliance (bank / wallet statement). */
+  sourceOfFundsDocuments?: UploadedDocument[];
 }
 
 export interface StampDutyFormData {

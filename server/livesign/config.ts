@@ -4,6 +4,28 @@ dotenv.config();
 const env = (name: string, fallback = '') => (process.env[name] ?? fallback).trim();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * LiveSign only accepts the Windows-style zone names returned by GET /api/Utilities/supported-timezones
+ * (e.g. "Cen. Australia Standard Time"), not "Australia/Adelaide". Common city-style names are translated.
+ */
+const LIVESIGN_TIME_ZONES: Record<string, string> = {
+  'Australia/Adelaide': 'Cen. Australia Standard Time',
+  'Australia/Broken_Hill': 'Cen. Australia Standard Time',
+  'Australia/Darwin': 'AUS Central Standard Time',
+  'Australia/Sydney': 'AUS Eastern Standard Time',
+  'Australia/Melbourne': 'AUS Eastern Standard Time',
+  'Australia/Canberra': 'AUS Eastern Standard Time',
+  'Australia/Brisbane': 'E. Australia Standard Time',
+  'Australia/Lindeman': 'E. Australia Standard Time',
+  'Australia/Perth': 'W. Australia Standard Time',
+  'Australia/Eucla': 'Aus Central W. Standard Time',
+  'Australia/Hobart': 'Tasmania Standard Time'
+};
+
+export function toLiveSignTimeZone(value: string): string {
+  return LIVESIGN_TIME_ZONES[value] || value;
+}
+
 const apiKey = env('LIVESIGN_API_KEY');
 const publicBaseUrl = env('PUBLIC_BASE_URL').replace(/\/+$/, '');
 const webhookSecret = env('LIVESIGN_WEBHOOK_SECRET');
@@ -17,7 +39,7 @@ export const liveSignConfig = {
   productPackageType: env('LIVESIGN_PRODUCT_PACKAGE', 'AMLWithVoi'),
   /** "If an ARNECC VOI is required for each customer set 1, else null" (LiveSign spec). */
   voiProductId: /^\d+$/.test(env('LIVESIGN_VOI_PRODUCT_ID', '1')) ? parseInt(env('LIVESIGN_VOI_PRODUCT_ID', '1'), 10) : null,
-  timeZone: env('LIVESIGN_TIMEZONE', 'Australia/Adelaide'),
+  timeZone: toLiveSignTimeZone(env('LIVESIGN_TIMEZONE', 'Cen. Australia Standard Time')),
   /** How often pending verifications are checked with LiveSign (seconds). */
   pollSeconds: Math.max(30, parseInt(env('LIVESIGN_POLL_SECONDS', '120'), 10) || 120),
   webhookSecret,

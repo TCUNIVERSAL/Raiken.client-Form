@@ -154,7 +154,7 @@ const ALLOWED_UPLOADS: Record<string, { ext: string; matches: (b: Buffer) => boo
   'image/jpeg': { ext: 'jpg', matches: b => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
   'image/png': { ext: 'png', matches: b => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) }
 };
-const DOCUMENT_KINDS = ['identity', 'proofOfAddress', 'contract'];
+const DOCUMENT_KINDS = ['identity', 'proofOfAddress', 'contract', 'source_of_funds'];
 
 app.post(
   '/api/uploads',
@@ -350,25 +350,31 @@ app.post('/api/intake', async (req: Request, res: Response) => {
     });
 
     // 4. Every person starts as "unverified"; send the identity + AML check to LiveSign.
-    //    Wait up to 15 s so the reply can say it was sent — slower calls finish in the
-    //    background, and the worker retries anything LiveSign could not accept yet.
     const { intake: verificationIntake } = await startVerification(intakeRecord);
     const sending = sendIntakeToLiveSign(verificationIntake, { notifyFirmOnError: false });
-    const outcome = await Promise.race([
-      sending,
-      new Promise<'pending'>(resolve => setTimeout(() => resolve('pending'), 15_000))
-    ]);
 
-    // 5. Email: "sent to LiveSign" goes to everyone from sendIntakeToLiveSign; if it is not
-    //    sent yet, confirm receipt now and the LiveSign email follows when it goes out.
-    let emailSent = outcome === 'sent' && isEmailConfigured();
-    if (outcome !== 'sent' && clientEmail) {
-      const r = await sendReceivedEmail({ toEmail: clientEmail, personName: clientName, matterReference, role: formData.role, propertyAddress });
-      emailSent = r.sent;
-    }
+    // 5. Emails follow the FINAL LiveSign outcome. Creating + starting an envelope can take well over
+    //    15 s (LiveSign's /start is outside its response-time target), so emails must not be decided by a
+    //    timeout: "sent to LiveSign" goes to everyone from sendIntakeToLiveSign; otherwise the main contact
+    //    gets "form received"; the firm always gets a copy with the real status.
+    const notifications = sending.then(async outcome => {
+      let clientEmailed = outcome === 'sent' && isEmailConfigured();
+      if (outcome !== 'sent' && clientEmail) {
+        const r = await sendReceivedEmail({ toEmail: clientEmail, personName: clientName, matterReference, role: formData.role, propertyAddress });
+        clientEmailed = r.sent;
+      }
+      await notifyFirmNewSubmission(firmSummary(verificationIntake), outcome, outcome === 'error' ? 'See livesign_error on this intake in Supabase.' : undefined);
+      return { outcome, clientEmailed };
+    }).catch(err => {
+      console.error('❌ [SUBMISSION EMAILS]:', err);
+      return null;
+    });
 
-    // Firm copy: new form + where it stands in LiveSign
-    await notifyFirmNewSubmission(firmSummary(verificationIntake), outcome, outcome === 'error' ? 'See livesign_error on this intake in Supabase.' : undefined);
+    // Wait for all of it (serverless hosts may stop work after the reply), up to 45 s. If LiveSign is even
+    // slower, the page says "being sent" and the emails still go out once the outcome is known.
+    const settled = await Promise.race([notifications, new Promise<null>(resolve => setTimeout(() => resolve(null), 45_000))]);
+    const outcome = settled?.outcome ?? 'pending';
+    const emailSent = settled?.clientEmailed ?? false;
 
     // 6. Return success payload
     return res.json({

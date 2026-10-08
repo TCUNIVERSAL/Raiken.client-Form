@@ -6,7 +6,7 @@ import {
   getIntakeByEnvelopeId, getPeople, IntakeRecord, listIntakesNeedingWork, PersonVerification, updateIntake, updatePerson
 } from '../verificationStore.js';
 import {
-  FirmFormSummary, notifyFirmPersonStatus, notifyFirmSendError, sendSentToLiveSignEmail, sendVerifiedEmail
+  FirmFormSummary, notifyFirmInvalidContactDetails, notifyFirmPersonStatus, notifyFirmSendError, sendSentToLiveSignEmail, sendVerifiedEmail
 } from '../emailService.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,18 +37,28 @@ async function getCountryCodes(): Promise<CountryPhoneCode[]> {
   return countryCodes;
 }
 
-/** LiveSign requires the partner id on each envelope; read it from an existing envelope if not configured. */
+/**
+ * LiveSign requires a Partner ID on every envelope (issued by LiveSign support). If it is not configured,
+ * try to read it from an existing envelope on the account — at most every 10 minutes.
+ */
+let lastDiscoveryAttempt = 0;
 async function ensurePartnerId(): Promise<string> {
   if (liveSignConfig.partnerId) return liveSignConfig.partnerId;
+  if (Date.now() - lastDiscoveryAttempt < 10 * 60_000) return '';
+  lastDiscoveryAttempt = Date.now();
   try {
     const page = await liveSignClient.get<any>('/api/Envelopes?take=10&orderBy=CreatedOn&orderDesc=true');
     const found = (page?.results || []).map((r: any) => r?.partnerId).find((id: any) => UUID_RE.test(id || '') && !/^0{8}-/.test(id));
     if (found) liveSignConfig.setDiscoveredPartnerId(found);
   } catch {
-    // Envelope creation will report a clear error if the partner id is really needed
+    // Reported below as a missing Partner ID
   }
   return liveSignConfig.partnerId;
 }
+
+export const MISSING_PARTNER_ID =
+  'LIVESIGN_PARTNER_ID is not set. LiveSign requires a Partner ID on every envelope — request it from support@live-sign.com, ' +
+  'add it to .env and restart the server. Waiting forms are then sent automatically.';
 
 /** Finds an envelope already created for this matter (protects against duplicates after a timeout). */
 async function findExistingEnvelope(matterReference: string): Promise<any | null> {
@@ -114,7 +124,17 @@ export async function sendIntakeToLiveSign(intake: IntakeRecord, opts: { notifyF
       return 'pending';
     }
 
+    // Without a Partner ID LiveSign rejects every envelope ("Invalid PartnerId provided"), so don't send:
+    // keep the form waiting — it is not counted as a failed attempt and goes out once the ID is configured.
+    const partnerId = await ensurePartnerId();
+    if (!partnerId) {
+      await updateIntake(intake.id, { livesign_status: 'pending_send', livesign_error: MISSING_PARTNER_ID });
+      console.warn(`⚠️  [LIVESIGN] ${intake.matter_reference} waiting: ${MISSING_PARTNER_ID}`);
+      return 'pending';
+    }
+
     const attempts = (intake.livesign_attempts || 0) + 1;
+    const startedAt = Date.now();
     try {
       let envelope = attempts > 1 ? await findExistingEnvelope(intake.matter_reference) : null;
 
@@ -122,7 +142,7 @@ export async function sendIntakeToLiveSign(intake: IntakeRecord, opts: { notifyF
         const payload = buildEnvelopePayload(
           { matterReference: intake.matter_reference, role: intake.role, parties: intake.parties, property: intake.property, finance: intake.finance },
           {
-            partnerId: await ensurePartnerId(),
+            partnerId,
             productPackageType: liveSignConfig.productPackageType,
             voiProductId: liveSignConfig.voiProductId,
             timeZone: liveSignConfig.timeZone,
@@ -160,7 +180,7 @@ export async function sendIntakeToLiveSign(intake: IntakeRecord, opts: { notifyF
         aml_status: envelope.aml?.status || null,
         aml_risk_rating: envelope.aml?.riskRating || null
       });
-      console.log(`🛡️  [LIVESIGN] ${intake.matter_reference} sent — envelope ${envelope.id}`);
+      console.log(`🛡️  [LIVESIGN] ${intake.matter_reference} sent — envelope ${envelope.id} (${((Date.now() - startedAt) / 1000).toFixed(1)} s to create + start)`);
       await emailEveryoneSentToLiveSign(intake, people);
       return 'sent';
     } catch (err: any) {
@@ -231,20 +251,50 @@ export async function syncIntakeFromLiveSign(intake: IntakeRecord): Promise<void
   });
 }
 
-/** Webhook: LiveSign says "envelope X changed" — find the form and re-read it. */
-export async function handleLiveSignWebhook(body: any, query: any): Promise<{ matched: boolean }> {
+/** Turns LiveSign's `invalidContactDetails` (shape not fixed by the docs) into readable text. */
+function describeInvalidContacts(details: unknown): string {
+  if (!details) return '';
+  if (typeof details === 'string') return details;
+  try {
+    return JSON.stringify(details).slice(0, 800);
+  } catch {
+    return 'Invalid contact details reported';
+  }
+}
+
+/**
+ * Webhook. LiveSign's payload is { envelopeId, status, countersignedOn, envelope, eventType, invalidContactDetails }.
+ * The envelope is always re-read from the API (the body is only a signal); invalid email / mobile reports are
+ * passed to the firm, because that client will not receive their verification link.
+ */
+export async function handleLiveSignWebhook(body: any, query: any): Promise<{ matched: boolean; eventType?: string }> {
   const candidates = [query?.envelopeId, body?.envelopeId, body?.EnvelopeId, body?.envelope?.id, body?.Envelope?.Id, body?.data?.envelopeId, body?.id, body?.Id];
   const envelopeId = candidates.find(c => typeof c === 'string' && UUID_RE.test(c));
-  if (!envelopeId) return { matched: false };
+  const eventType = typeof body?.eventType === 'string' ? body.eventType : undefined;
+  if (!envelopeId) return { matched: false, eventType };
   const intake = await getIntakeByEnvelopeId(envelopeId);
-  if (!intake) return { matched: false };
+  if (!intake) return { matched: false, eventType };
+
+  const invalid = describeInvalidContacts(body?.invalidContactDetails);
+  if (invalid || /invalid\s*contact/i.test(eventType || '')) {
+    console.warn(`⚠️  [LIVESIGN] ${intake.matter_reference}: invalid contact details reported — ${invalid || eventType}`);
+    await notifyFirmInvalidContactDetails(firmSummary(intake), invalid || String(eventType));
+  }
   await syncIntakeFromLiveSign(intake);
-  return { matched: true };
+  return { matched: true, eventType };
 }
 
 // ─── Background job ──────────────────────────────────────────────────────────
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;
+/** LiveSign allows 60 requests per minute per endpoint; space the background calls out to stay well under. */
+const WORKER_CALL_GAP_MS = 1_100;
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** Test helper: allow Partner ID discovery to run again immediately. */
+export function resetPartnerIdDiscovery() {
+  lastDiscoveryAttempt = 0;
+}
 
 /** Sends forms still waiting for LiveSign and checks pending verifications every LIVESIGN_POLL_SECONDS. */
 export function startLiveSignWorker() {
@@ -253,7 +303,10 @@ export function startLiveSignWorker() {
     if (running || !liveSignConfig.enabled) return;
     running = true;
     try {
+      let first = true;
       for (const intake of await listIntakesNeedingWork()) {
+        if (!first) await sleep(WORKER_CALL_GAP_MS);
+        first = false;
         try {
           if (intake.livesign_status === 'pending_send') await sendIntakeToLiveSign(intake);
           else await syncIntakeFromLiveSign(intake);

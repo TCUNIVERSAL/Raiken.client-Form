@@ -28,7 +28,6 @@ export const RaikanDetails: React.FC = () => (
   <div className="rk-info-box">
     <p className="rk-question">Please give these details to your real estate agent, mortgage broker or bank:</p>
     <dl className="rk-info-list">
-      <div><dt>Company</dt><dd>Raikan Corporation</dd></div>
       <div><dt>Contact</dt><dd>Bhavesh Chaudhari</dd></div>
       <div><dt>Office</dt><dd>08 7076 9899</dd></div>
       <div><dt>Email</dt><dd>conveyancer@rcorpo.com</dd></div>
@@ -165,7 +164,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
           description={propertyAddress || 'Property address not entered yet'}
           onChange={checked => onDeclarationChange({ authorityToAct: checked })}
         >
-          I/We authorise Raikan Corporation to act as our conveyancer for this property:
+          I/We authorise the conveyancer to act for this property:
         </CheckboxCard>
 
         <div className="rk-signature-row">

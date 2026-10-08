@@ -220,3 +220,20 @@ export function notifyFirmPersonStatus(form: FirmFormSummary, person: { name: st
 export function notifyFirmSendError(form: FirmFormSummary, error: string) {
   return notifyFirmNewSubmission(form, 'error', error);
 }
+
+/** LiveSign reported that an email address or mobile number failed validation — that client gets no link. */
+export function notifyFirmInvalidContactDetails(form: FirmFormSummary, details: string) {
+  const body = `
+    <p>LiveSign reported <strong>invalid contact details</strong> on this form, so a client may not receive their identity verification link.</p>
+    ${referenceBox(form.matterReference)}
+    ${detailsTable([
+      ['Property', form.propertyAddress],
+      ['Reported by LiveSign', details],
+      ...form.people.map((p, i): [string, string] => [`${form.role} ${i + 1}`, `${p.name} · ${p.email} · ${p.mobile}`])
+    ])}
+    <p>Please confirm the client's email and mobile, then correct them in LiveSign and resend the invitation.</p>`;
+  return deliverToFirm(
+    `Invalid contact details for LiveSign [${form.matterReference}]`,
+    layout({ heading: 'Client contact details rejected', intro: form.propertyAddress || form.role, body })
+  );
+}

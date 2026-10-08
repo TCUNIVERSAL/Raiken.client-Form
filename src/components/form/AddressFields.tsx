@@ -1,5 +1,5 @@
 import React from 'react';
-import { AU_STATES, COUNTRIES } from '../../utils/validation.js';
+import { AU_STATES, COUNTRIES, POPULAR_SA_SUBURBS } from '../../utils/validation.js';
 import { Address } from './formState.js';
 import { SelectField, TextField } from './fields.js';
 
@@ -65,6 +65,23 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address,
         valid={ok('suburb', address.suburb)}
         onChange={v => onChange({ suburb: v })}
       />
+      {isAustralia && !address.suburb && (
+        <div className="rk-suggestions rk-suburb-quick">
+          <p className="rk-overline">Quick fill:</p>
+          <div className="rk-chips">
+            {POPULAR_SA_SUBURBS.slice(0, 6).map(item => (
+              <button
+                key={item.suburb}
+                type="button"
+                className="rk-chip"
+                onClick={() => onChange({ suburb: item.suburb, state: 'SA', postcode: item.postcode })}
+              >
+                {item.suburb} ({item.postcode})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="rk-row">
         {isAustralia ? (
           <SelectField

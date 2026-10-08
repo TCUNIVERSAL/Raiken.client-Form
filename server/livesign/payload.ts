@@ -132,6 +132,9 @@ export function buildEnvelopePayload(intake: { matterReference: string; role: st
 /** Problems LiveSign would reject, caught before sending. */
 export function validateEnvelopePayload(payload: any): string[] {
   const problems: string[] = [];
+  const partnerId = String(payload?.envelope?.partnerId || '');
+  if (!partnerId || partnerId === ZERO_GUID) problems.push('LiveSign Partner ID is missing (LIVESIGN_PARTNER_ID).');
+  if (payload?.envelope?.payMethod !== 'AccountHolderPays' && payload?.envelope?.payMethod !== 'CustomerPays') problems.push('payMethod must be AccountHolderPays or CustomerPays.');
   if (!payload?.customers?.length) problems.push('At least one person is required.');
   payload?.customers?.forEach((c: any, i: number) => {
     const who = `Person ${i + 1}`;

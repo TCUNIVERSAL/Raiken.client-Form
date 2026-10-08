@@ -1,7 +1,8 @@
 import React from 'react';
 import { ClientIntakeFormData, FinanceFormData, PropertyFormData } from '../../types/index.js';
-import { settlementMax, settlementMin } from '../../utils/validation.js';
+import { settlementMax, settlementMin, POPULAR_SA_SUBURBS } from '../../utils/validation.js';
 import { CheckboxCard, ChoiceCards, DateField, Suggestions, TextField } from './fields.js';
+import { FileUpload } from './FileUpload.js';
 
 interface PropertyStepProps {
   formData: ClientIntakeFormData;
@@ -14,6 +15,12 @@ interface PropertyStepProps {
 
 const BANKS = ['Commonwealth Bank', 'Westpac', 'ANZ', 'NAB', 'BankSA', "People's Choice"];
 const HEARD_FROM = ['Google search', 'Facebook', 'Friend or family', 'Real estate agent', 'Mortgage broker', 'I am a returning client'];
+
+function addDaysIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 export const PropertyStep: React.FC<PropertyStepProps> = ({
   formData, errors, live, onPropertyChange, onFinanceChange, onHowDidYouHearChange
@@ -38,6 +45,23 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
         <TextField id="property-suburb" label="Suburb / town" required placeholder="e.g. Adelaide"
           value={property.suburb} error={errors['property-suburb']} valid={ok('property-suburb', property.suburb)}
           onChange={v => onPropertyChange({ suburb: v })} />
+        {!property.suburb && (
+          <div className="rk-suggestions rk-suburb-quick">
+            <p className="rk-overline">Quick fill:</p>
+            <div className="rk-chips">
+              {POPULAR_SA_SUBURBS.slice(0, 6).map(item => (
+                <button
+                  key={item.suburb}
+                  type="button"
+                  className="rk-chip"
+                  onClick={() => onPropertyChange({ suburb: item.suburb, postcode: item.postcode })}
+                >
+                  {item.suburb} ({item.postcode})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="rk-row">
           <TextField id="property-state" label="State" required value="SA" readOnly valid
             hint="We handle South Australian properties only." onChange={() => undefined} />
@@ -58,6 +82,13 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
           valid={ok('property-purchasePrice', property.purchasePrice)}
           onChange={v => onPropertyChange({ purchasePrice: moneyOnly(v) })}
         />
+        {property.purchasePrice && !isNaN(Number(property.purchasePrice)) && Number(property.purchasePrice) > 0 && (
+          <p className="rk-price-preview" aria-live="polite">
+            <span className="rk-price-preview-badge">
+              💰 Formatted: {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(Number(property.purchasePrice))} AUD
+            </span>
+          </p>
+        )}
         <DateField
           id="property-settlementDate"
           label="Settlement date (if known)"
@@ -69,6 +100,25 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
           valid={ok('property-settlementDate', property.settlementDate)}
           onChange={v => onPropertyChange({ settlementDate: v })}
         />
+        <div className="rk-suggestions rk-settlement-quick">
+          <p className="rk-overline">Standard settlement terms:</p>
+          <div className="rk-chips">
+            {[30, 45, 60, 90].map(days => {
+              const dateIso = addDaysIso(days);
+              const isSelected = property.settlementDate === dateIso;
+              return (
+                <button
+                  key={days}
+                  type="button"
+                  className={`rk-chip${isSelected ? ' rk-chip-active' : ''}`}
+                  onClick={() => onPropertyChange({ settlementDate: dateIso })}
+                >
+                  +{days} Days ({new Date(dateIso + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })})
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {isPurchaser && (
           <ChoiceCards
@@ -184,6 +234,29 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
                 <TextField id="finance-otherPaymentDetails" label="Please describe" required placeholder="e.g. Gift from family" maxLength={300}
                   value={finance.otherPaymentDetails} error={errors['finance-otherPaymentDetails']} valid={ok('finance-otherPaymentDetails', finance.otherPaymentDetails)}
                   onChange={v => onFinanceChange({ otherPaymentDetails: v })} />
+              )}
+
+              {(finance.paysByVirtualAssets || finance.paysByOther) && (
+                <div className="rk-sof-wrap">
+                  <div className="rk-compliance-badge rk-compliance-amber">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      <circle cx="12" cy="12" r="1" />
+                    </svg>
+                    <span>
+                      <strong>AML Compliance Notice:</strong> Digital asset or third-party funds require source of wealth verification under AUSTRAC guidelines.
+                    </span>
+                  </div>
+                  <FileUpload
+                    id="finance-sourceOfFunds"
+                    label="Source of Wealth / Proof of Funds"
+                    hint="Upload bank statement, crypto wallet history, or gift declaration (PDF, JPG, PNG)"
+                    kind="source_of_funds"
+                    value={finance.sourceOfFundsDocuments || []}
+                    onAdd={doc => onFinanceChange({ sourceOfFundsDocuments: [...(finance.sourceOfFundsDocuments || []), doc] })}
+                    onRemove={docId => onFinanceChange({ sourceOfFundsDocuments: (finance.sourceOfFundsDocuments || []).filter(d => d.id !== docId) })}
+                  />
+                </div>
               )}
             </div>
             {errors['finance-paysByElectronicTransfer'] && <p className="rk-error" role="alert">{errors['finance-paysByElectronicTransfer']}</p>}

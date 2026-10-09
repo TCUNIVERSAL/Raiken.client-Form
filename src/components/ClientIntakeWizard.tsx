@@ -446,18 +446,6 @@ export const ClientIntakeWizard: React.FC = () => {
     );
   }
 
-  if (!ready) {
-    return (
-      <div className="rk-form">
-        <FormHeader saveState="none" lastSavedAt={null} />
-        <div className="rk-shell rk-loading" role="status">
-          <span className="rk-spinner" aria-hidden="true" />
-          Loading your form…
-        </div>
-      </div>
-    );
-  }
-
   const heading = STEP_HEADINGS[step](role);
   let primaryLabel = 'Continue';
   if (isLastStep) primaryLabel = isSubmitting ? 'Sending…' : 'Submit';

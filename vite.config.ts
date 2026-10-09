@@ -6,6 +6,10 @@ export default defineConfig(({ command }) => ({
   // .env sets NODE_ENV=development for the backend; without this, `vite build` would ship
   // React's development build (about 3× larger and slower) to clients.
   define: command === 'build' ? { 'process.env.NODE_ENV': JSON.stringify('production') } : undefined,
+  build: {
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 1000
+  },
   server: {
     port: 5175,
     host: true,

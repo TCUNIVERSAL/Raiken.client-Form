@@ -13,7 +13,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="rk-loading" style="display:flex;align-items:center;justify-content:center;min-height:60vh;font-family:'Figtree',system-ui,sans-serif;color:#5b6b82;font-size:1.1rem">
+        Loading form&hellip;
+      </div>
+    </div>
+    <noscript>
+      <div style="max-width:480px;margin:60px auto;padding:24px;background:#fff;border-radius:10px;font-family:system-ui;text-align:center">
+        <h2 style="color:#172033">JavaScript required</h2>
+        <p style="color:#5b6b82">Please enable JavaScript in your browser to use this form.</p>
+      </div>
+    </noscript>
+    <script>
+      // Catch fatal JS errors that happen before or during React mount
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        if (root && !root.querySelector('.rk-app')) {
+          root.innerHTML = '<div style="max-width:540px;margin:60px auto;padding:24px;background:#fff;border-radius:10px;font-family:system-ui;border-left:4px solid #dc2626">'
+            + '<h2 style="margin:0 0 12px;color:#172033">Unable to load form</h2>'
+            + '<p style="color:#5b6b82">An error occurred while loading. Please try clearing your browser data for this site and refreshing.</p>'
+            + '<pre style="background:#f8fafc;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;color:#dc2626;white-space:pre-wrap">' + (e.message || 'Unknown error') + '</pre>'
+            + '<button onclick="try{localStorage.clear()}catch(x){}location.reload()" style="background:#1b2f63;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600;margin-top:12px">Clear data &amp; reload</button>'
+            + '</div>';
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -6,67 +6,100 @@
 
 // Helper to set a cookie with SameSite & Expiry
 export function setCookie(name: string, value: string, days: number = 365) {
-  const d = new Date();
-  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-  const expires = `expires=${d.toUTCString()}`;
-  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)};${expires};path=/;SameSite=Lax`;
+  try {
+    const d = new Date();
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+    const expires = `expires=${d.toUTCString()}`;
+    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)};${expires};path=/;SameSite=Lax`;
+  } catch {
+    // Cookie access blocked or restricted
+  }
   try {
     localStorage.setItem(name, value);
-  } catch (e) {
-    // ignore
+  } catch {
+    // Storage restricted
   }
 }
 
 // Helper to get a cookie value
 export function getCookie(name: string): string {
-  const cname = `${encodeURIComponent(name)}=`;
-  const decoded = decodeURIComponent(document.cookie);
-  const ca = decoded.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i].trim();
-    if (c.indexOf(cname) === 0) {
-      return c.substring(cname.length, c.length);
+  try {
+    if (typeof document !== 'undefined' && document.cookie) {
+      const cname = `${encodeURIComponent(name)}=`;
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        const c = ca[i].trim();
+        if (c.indexOf(cname) === 0) {
+          const raw = c.substring(cname.length);
+          try {
+            return decodeURIComponent(raw);
+          } catch {
+            return raw;
+          }
+        }
+      }
     }
+  } catch {
+    // Cookie access blocked
   }
-  // Fallback to localStorage if cookies were blocked
+  // Fallback to localStorage if cookies were blocked or not found
   try {
     return localStorage.getItem(name) || '';
-  } catch (e) {
+  } catch {
     return '';
   }
 }
 
 // Generate or retrieve persistent unique session / device ID
 export function getOrSetSessionId(): string {
-  let sessionId = getCookie('raikan_session_id');
-  if (!sessionId) {
-    sessionId = 'sess_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
-    setCookie('raikan_session_id', sessionId, 365);
+  try {
+    let sessionId = getCookie('raikan_session_id');
+    if (!sessionId) {
+      sessionId = 'sess_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      setCookie('raikan_session_id', sessionId, 365);
+    }
+    return sessionId;
+  } catch {
+    return 'sess_fallback_' + Date.now().toString(36);
   }
-  return sessionId;
 }
 
 // Save user identity to persistent cookies
 export function saveUserIdentityCookies(data: { name?: string; phone?: string; email?: string }) {
-  if (data.name) setCookie('raikan_user_name', data.name, 365);
-  if (data.phone) setCookie('raikan_user_phone', data.phone, 365);
-  if (data.email) setCookie('raikan_user_email', data.email, 365);
-  setCookie('raikan_last_active', new Date().toISOString(), 365);
+  try {
+    if (data.name) setCookie('raikan_user_name', data.name, 365);
+    if (data.phone) setCookie('raikan_user_phone', data.phone, 365);
+    if (data.email) setCookie('raikan_user_email', data.email, 365);
+    setCookie('raikan_last_active', new Date().toISOString(), 365);
 
-  const prevCount = parseInt(getCookie('raikan_visit_count') || '0', 10);
-  setCookie('raikan_visit_count', String(prevCount + 1), 365);
+    const prevCount = parseInt(getCookie('raikan_visit_count') || '0', 10);
+    setCookie('raikan_visit_count', String(prevCount + 1), 365);
+  } catch {
+    // ignore
+  }
 }
 
 // Retrieve remembered user information from cookies
 export function getRememberedUser() {
-  return {
-    sessionId: getOrSetSessionId(),
-    name: getCookie('raikan_user_name'),
-    phone: getCookie('raikan_user_phone'),
-    email: getCookie('raikan_user_email'),
-    lastActive: getCookie('raikan_last_active'),
-    visitCount: parseInt(getCookie('raikan_visit_count') || '1', 10)
-  };
+  try {
+    return {
+      sessionId: getOrSetSessionId(),
+      name: getCookie('raikan_user_name'),
+      phone: getCookie('raikan_user_phone'),
+      email: getCookie('raikan_user_email'),
+      lastActive: getCookie('raikan_last_active'),
+      visitCount: parseInt(getCookie('raikan_visit_count') || '1', 10)
+    };
+  } catch {
+    return {
+      sessionId: 'sess_fallback_' + Date.now().toString(36),
+      name: '',
+      phone: '',
+      email: '',
+      lastActive: '',
+      visitCount: 1
+    };
+  }
 }
 
 // Detect browser brand & version

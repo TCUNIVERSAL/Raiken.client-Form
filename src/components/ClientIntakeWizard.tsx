@@ -72,34 +72,41 @@ export const ClientIntakeWizard: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const restored = await sync.restore();
-      if (cancelled || restoreAppliedRef.current) return;
-      restoreAppliedRef.current = true;
-      if (restored?.hasAnswers) {
-        setFormData(restored.formData);
-        setStep(stepFromNumber(restored.formData.role, restored.currentStep));
-        setPartyIndex(restored.partyIndex);
-        setRestoredNotice(restored.currentStep > 1);
-      } else {
-        // Nothing saved yet — pre-fill contact details remembered from an earlier visit
-        const remembered = getRememberedUser();
-        if (remembered.name || remembered.phone || remembered.email) {
-          setReturningUser(remembered.name || remembered.email || remembered.phone);
-          setFormData(prev => {
-            const parties = [...prev.parties];
-            const nameParts = (remembered.name || '').split(' ');
-            parties[0] = {
-              ...parties[0],
-              firstName: parties[0].firstName || nameParts[0] || '',
-              lastName: parties[0].lastName || nameParts.slice(1).join(' ') || '',
-              mobile: parties[0].mobile || remembered.phone || '',
-              email: parties[0].email || remembered.email || ''
-            };
-            return { ...prev, parties };
-          });
+      try {
+        const restored = await sync.restore();
+        if (cancelled || restoreAppliedRef.current) return;
+        restoreAppliedRef.current = true;
+        if (restored?.hasAnswers) {
+          setFormData(restored.formData);
+          setStep(stepFromNumber(restored.formData.role, restored.currentStep));
+          setPartyIndex(restored.partyIndex);
+          setRestoredNotice(restored.currentStep > 1);
+        } else {
+          // Nothing saved yet — pre-fill contact details remembered from an earlier visit
+          const remembered = getRememberedUser();
+          if (remembered.name || remembered.phone || remembered.email) {
+            setReturningUser(remembered.name || remembered.email || remembered.phone);
+            setFormData(prev => {
+              const parties = [...prev.parties];
+              const nameParts = (remembered.name || '').split(' ');
+              parties[0] = {
+                ...parties[0],
+                firstName: parties[0].firstName || nameParts[0] || '',
+                lastName: parties[0].lastName || nameParts.slice(1).join(' ') || '',
+                mobile: parties[0].mobile || remembered.phone || '',
+                email: parties[0].email || remembered.email || ''
+              };
+              return { ...prev, parties };
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Session restore notice:', err);
+      } finally {
+        if (!cancelled) {
+          setReady(true);
         }
       }
-      setReady(true);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

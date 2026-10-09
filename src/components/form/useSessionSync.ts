@@ -41,14 +41,22 @@ interface ServerSession {
 }
 
 async function fetchJson(url: string, init?: RequestInit) {
-  const res = await fetch(url, { credentials: 'same-origin', ...init });
-  let body: any = null;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
   try {
-    body = await res.json();
+    const res = await fetch(url, { credentials: 'same-origin', signal: controller.signal, ...init });
+    clearTimeout(timeoutId);
+    let body: any = null;
+    try {
+      body = await res.json();
+    } catch {
+      // non-JSON error page
+    }
+    return { ok: res.ok, status: res.status, body };
   } catch {
-    // non-JSON error page
+    clearTimeout(timeoutId);
+    return { ok: false, status: 0, body: null };
   }
-  return { ok: res.ok, status: res.status, body };
 }
 
 function toSnapshot(session: ServerSession): SyncSnapshot | null {

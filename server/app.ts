@@ -26,6 +26,15 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json({ limit: '15mb' }));
 
+// Normalize incoming request path for Vercel Serverless Functions
+// In Vercel rewrites, /api/xyz might arrive as /xyz or /api/xyz
+app.use((req: Request, res: Response, next) => {
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
 // Helper to extract client IP address
 function getClientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];

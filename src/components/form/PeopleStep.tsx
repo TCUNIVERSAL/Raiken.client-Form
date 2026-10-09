@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { ClientIntakeFormData, PartyFormData, UploadedDocument } from '../../types/index.js';
 import { DOB_MIN, dobMax, validatePartyAddress, validatePartyDetails } from '../../utils/validation.js';
 import { Address, formatAddress, partyHasAnswers, pickAddress } from './formState.js';
-import { CheckboxCard, ChoiceCards, DateField, OptionalReveal, TextField, TickIcon } from './fields.js';
+import { CheckboxCard, ChoiceCards, DateField, GroupHeading, OptionalReveal, TextField, TickIcon } from './fields.js';
 import { PhoneField } from './PhoneField.js';
 import { FileUpload } from './FileUpload.js';
 import { AddressFields } from './AddressFields.js';
+import { GlobeIcon, HomeIcon, IdCardIcon, PhoneIcon, PlusIcon, UserIcon } from './icons.js';
 
 interface PeopleStepProps {
   formData: ClientIntakeFormData;
@@ -68,7 +69,7 @@ const AddressSection: React.FC<{
 
   return (
     <div className="rk-group">
-      <p className="rk-group-title">Home address</p>
+      <GroupHeading icon={<HomeIcon />} description="Where this person lives now.">Home address</GroupHeading>
       {previousParty && (
         <CheckboxCard
           id={`${party.id}-addr-same`}
@@ -119,6 +120,7 @@ const PersonForm: React.FC<{
   return (
     <>
       <div className="rk-group">
+        <GroupHeading icon={<UserIcon />} description="Please write names exactly as they appear on photo ID.">Personal details</GroupHeading>
         <div className="rk-row">
           <TextField id={id('firstName')} label="First name" required autoComplete={index === 0 ? 'given-name' : 'off'}
             value={party.firstName} error={errors[id('firstName')]} onChange={v => onUpdate('firstName', v)} />
@@ -139,9 +141,15 @@ const PersonForm: React.FC<{
           value={party.dob}
           error={errors[id('dob')]}
           valid={ok('dob')}
-          className="rk-w-half"
+          className="rk-w-half rk-field-last"
           onChange={v => onUpdate('dob', v)}
         />
+      </div>
+
+      <div className="rk-group">
+        <GroupHeading icon={<PhoneIcon />} description="We’ll use these to keep you updated, and LiveSign will email the ID check link.">
+          Contact details
+        </GroupHeading>
         <div className="rk-row">
           <PhoneField id={id('mobile')} label="Mobile" required
             countryCode={party.phoneCountryCode || '+61'}
@@ -167,9 +175,10 @@ const PersonForm: React.FC<{
       />
 
       <div className="rk-group">
+        <GroupHeading icon={<GlobeIcon />} description="Required by law for the identity check.">Residency and occupation</GroupHeading>
         <ChoiceCards
           id={id('residencyStatus')}
-          label="Residency"
+          label="Residency status"
           required
           columns={3}
           options={RESIDENCY_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
@@ -178,12 +187,17 @@ const PersonForm: React.FC<{
           onChange={v => onUpdate('residencyStatus', v)}
         />
         <TextField id={id('occupation')} label="Occupation" required placeholder="e.g. Nurse, Retired, Student" autoComplete="off"
-          value={party.occupation} error={errors[id('occupation')]} className="rk-w-half" onChange={v => onUpdate('occupation', v)} />
-        <OptionalReveal label="Add photo ID (optional)" open={party.idDocuments.length > 0}>
+          value={party.occupation} error={errors[id('occupation')]} className="rk-w-half rk-field-last" onChange={v => onUpdate('occupation', v)} />
+      </div>
+
+      <div className="rk-group">
+        <GroupHeading icon={<IdCardIcon />} description="Optional. A driver licence, passport or photo card. You can also send it to us later.">
+          Photo ID
+        </GroupHeading>
+        <OptionalReveal label="Upload photo ID" open={party.idDocuments.length > 0}>
           <FileUpload
             id={id('idDocuments')}
             label="Photo ID"
-            hint="Driver licence, passport or photo card."
             kind="identity"
             partyId={party.id}
             value={party.idDocuments}
@@ -220,6 +234,50 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
   };
 
   const ownErrorCount = (p: PartyFormData) => Object.keys(errors).filter(k => k.startsWith(`${p.id}-`)).length;
+  const personWord = role === 'Purchaser' ? 'buyer' : 'seller';
+
+  const formFor = (party: PartyFormData, i: number) => (
+    <PersonForm
+      party={party}
+      index={i}
+      role={role}
+      errors={errors}
+      live={live}
+      previousParty={formData.parties[i - 1]}
+      onUpdate={(field, value) => onUpdateParty(i, field, value)}
+      onAddDocument={doc => onAddDocument(party.id, doc)}
+      onRemoveDocument={docId => onRemoveDocument(party.id, docId)}
+      onUploadingChange={onUploadingChange}
+      onAddressChange={patch => onAddressChange(i, patch)}
+      onSameAsAbove={checked => onSameAsAbove(i, checked)}
+    />
+  );
+
+  const addPersonButton = total < MAX_SELECTABLE && (
+    <button type="button" className="rk-add-person" onClick={onAddParty}>
+      <span className="rk-add-person-icon" aria-hidden="true"><PlusIcon /></span>
+      <span className="rk-add-person-text">
+        <span className="rk-add-person-title">Add another {personWord}</span>
+        <span className="rk-add-person-desc">
+          {total === 1
+            ? `${role === 'Purchaser' ? 'Buying' : 'Selling'} with a partner or family member? Add them here.`
+            : 'Add everyone who will be named on the contract.'}
+        </span>
+      </span>
+    </button>
+  );
+
+  // One person (the usual case): just their questions, without the expandable list
+  if (total === 1) {
+    return (
+      <div className="rk-people">
+        <section className="rk-panel rk-person-solo" aria-label={`${role} 1`}>
+          {formFor(formData.parties[0], 0)}
+        </section>
+        {addPersonButton}
+      </div>
+    );
+  }
 
   return (
     <div className="rk-people">
@@ -235,7 +293,7 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
           let badge: React.ReactNode;
           if (shownErrors > 0) badge = <span className="rk-badge rk-badge-error">{shownErrors} to fix</span>;
           else if (state === 'complete') badge = <span className="rk-badge rk-badge-success"><TickIcon /> Complete</span>;
-          else if (state === 'in-progress') badge = <span className="rk-badge">{missing} left</span>;
+          else if (state === 'in-progress') badge = <span className="rk-badge">{missing} to complete</span>;
           else badge = <span className="rk-badge rk-badge-muted">Not started</span>;
 
           return (
@@ -278,26 +336,11 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
               )}
 
               <div id={bodyId} className="rk-party-body" hidden={!open}>
-                {open && (
-                  <PersonForm
-                    party={party}
-                    index={i}
-                    role={role}
-                    errors={errors}
-                    live={live}
-                    previousParty={formData.parties[i - 1]}
-                    onUpdate={(field, value) => onUpdateParty(i, field, value)}
-                    onAddDocument={doc => onAddDocument(party.id, doc)}
-                    onRemoveDocument={docId => onRemoveDocument(party.id, docId)}
-                    onUploadingChange={onUploadingChange}
-                    onAddressChange={patch => onAddressChange(i, patch)}
-                    onSameAsAbove={checked => onSameAsAbove(i, checked)}
-                  />
-                )}
+                {open && formFor(party, i)}
                 {open && i < total - 1 && (
                   <div className="rk-party-next">
                     <button type="button" className="rk-btn rk-btn-secondary" onClick={() => onSelectParty(i + 1)}>
-                      Continue to {role} {i + 2}
+                      Next: {partyDisplayName(formData.parties[i + 1]) || `${role} ${i + 2}`}
                     </button>
                   </div>
                 )}
@@ -307,11 +350,7 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
         })}
       </div>
 
-      {total < MAX_SELECTABLE && (
-        <button type="button" className="rk-add-person" onClick={onAddParty}>
-          <span aria-hidden="true">+</span> Add another person
-        </button>
-      )}
+      {addPersonButton}
     </div>
   );
 };

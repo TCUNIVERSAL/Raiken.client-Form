@@ -20,12 +20,15 @@ function describedBy(id: string, hint?: React.ReactNode, error?: string) {
   return [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
 }
 
-/** "Label *" or "Label (optional)". The star is visual; screen readers hear "required". */
+/**
+ * "Label" or "Label (optional)". Almost every question is required, so only the
+ * optional ones are marked on screen; screen readers still hear "required".
+ */
 export const LabelText: React.FC<{ label: React.ReactNode; required?: boolean }> = ({ label, required }) => (
   <>
     {label}
     {required
-      ? <><span className="rk-req" aria-hidden="true"> *</span><span className="rk-sr-only"> (required)</span></>
+      ? <span className="rk-sr-only"> (required)</span>
       : <span className="rk-opt"> (optional)</span>}
   </>
 );
@@ -272,7 +275,8 @@ interface ChoiceCardsProps {
   hint?: React.ReactNode;
   error?: string;
   columns?: 1 | 2 | 3 | 4;
-  size?: 'default' | 'compact';
+  /** compact: short answers such as Yes / No · large: the big buying / selling cards */
+  size?: 'default' | 'compact' | 'large';
 }
 
 export const ChoiceCards: React.FC<ChoiceCardsProps> = ({ id, label, value, onChange, options, required, hint, error, columns = 2, size = 'default' }) => (
@@ -284,7 +288,7 @@ export const ChoiceCards: React.FC<ChoiceCardsProps> = ({ id, label, value, onCh
   >
     <legend className="rk-label"><LabelText label={label} required={required} /></legend>
     {hint && <div id={`${id}-hint`} className="rk-hint">{hint}</div>}
-    <div className={`rk-cards rk-cols-${columns}${size === 'compact' ? ' rk-cards-compact' : ''}`}>
+    <div className={`rk-cards rk-cols-${columns}${size !== 'default' ? ` rk-cards-${size}` : ''}`}>
       {options.map(o => (
         <label key={o.value} className={`rk-choice${value === o.value ? ' rk-choice-selected' : ''}`}>
           <input
@@ -335,7 +339,7 @@ export const CheckboxCard: React.FC<CheckboxCardProps> = ({ id, checked, onChang
       <span className="rk-choice-text">
         <span className="rk-choice-title">
           {children}
-          {required && <><span className="rk-req" aria-hidden="true"> *</span><span className="rk-sr-only"> (required)</span></>}
+          {required && <span className="rk-sr-only"> (required)</span>}
         </span>
         {description && <span className="rk-choice-desc">{description}</span>}
       </span>
@@ -363,28 +367,51 @@ export const Notice: React.FC<{
   </div>
 );
 
-/** Heading for a group of questions inside a panel. */
-export const GroupHeading: React.FC<{ children: React.ReactNode; description?: React.ReactNode }> = ({ children, description }) => (
+/** Heading for a group of questions inside a panel: icon, title and a one-line explanation. */
+export const GroupHeading: React.FC<{
+  children: React.ReactNode;
+  description?: React.ReactNode;
+  icon?: React.ReactNode;
+  as?: 'h2' | 'h3';
+}> = ({ children, description, icon, as: Tag = 'h3' }) => (
   <div className="rk-group-head">
-    <h3 className="rk-group-title">{children}</h3>
-    {description && <p className="rk-hint">{description}</p>}
+    {icon && <span className="rk-group-icon" aria-hidden="true">{icon}</span>}
+    <div className="rk-group-text">
+      <Tag className="rk-group-title">{children}</Tag>
+      {description && <p className="rk-group-desc">{description}</p>}
+    </div>
   </div>
 );
 
-// ─── Progress indicator: "Step 2 of 5 · Purchasers" and a thin bar ──────────
+// ─── Progress: every step named, so clients see where they are and what's next ──
 export const Stepper: React.FC<{ steps: string[]; current: number; allDone?: boolean }> = ({ steps, current, allDone }) => {
-  const shown = allDone ? steps.length : current + 1;
-  const pct = Math.round((shown / steps.length) * 100);
+  const next = !allDone && current < steps.length - 1 ? steps[current + 1] : '';
   return (
     <nav aria-label="Form progress" className="rk-progress-nav">
-      <p className="rk-progress-text">
+      <ol className="rk-steps">
+        {steps.map((label, i) => {
+          const done = allDone || i < current;
+          const active = !allDone && i === current;
+          return (
+            <li
+              key={label}
+              className={`rk-step${done ? ' rk-step-done' : ''}${active ? ' rk-step-active' : ''}`}
+              aria-current={active ? 'step' : undefined}
+            >
+              <span className="rk-step-dot" aria-hidden="true">{done ? <TickIcon /> : i + 1}</span>
+              <span className="rk-step-label">
+                {label}
+                <span className="rk-sr-only">{done ? ' (done)' : active ? ' (current step)' : ''}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="rk-progress-text" aria-hidden="true">
         {allDone
-          ? <strong>Done</strong>
-          : <>Step {current + 1} of {steps.length} <span aria-hidden="true">·</span> <strong>{steps[current]}</strong></>}
+          ? <strong>All done</strong>
+          : <>Step {current + 1} of {steps.length}{next && <span className="rk-progress-next"> · Next: {next}</span>}</>}
       </p>
-      <div className="rk-progress-bar" role="progressbar" aria-label="Progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-        <div className="rk-progress-fill" style={{ width: `${pct}%` }} />
-      </div>
     </nav>
   );
 };

@@ -21,6 +21,7 @@ import { StampDutyStep } from './form/StampDutyStep.js';
 import { ReviewProblem, ReviewStep } from './form/ReviewStep.js';
 import { useSessionSync } from './form/useSessionSync.js';
 import { FormHeader, saveStateFor } from './form/FormHeader.js';
+import { ArrowLeftIcon, ArrowRightIcon } from './form/icons.js';
 import '../form.css';
 
 function prefixKeys(errors: FieldErrors, prefix: string): FieldErrors {
@@ -30,11 +31,25 @@ function prefixKeys(errors: FieldErrors, prefix: string): FieldErrors {
 }
 
 const STEP_HEADINGS: Record<StepKey, (role: ConveyancingRole) => { title: string; lead?: string }> = {
-  start: () => ({ title: 'Let’s get started', lead: 'About 10 minutes. Your answers save as you go.' }),
-  people: role => ({ title: role === 'Purchaser' ? 'Who is buying?' : 'Who is selling?' }),
-  property: () => ({ title: 'The property' }),
-  stampDuty: () => ({ title: 'Stamp duty relief', lead: 'For first home buyers. Revenue SA decides; it can take 14+ days.' }),
-  review: () => ({ title: 'Check and sign' })
+  start: () => ({
+    title: 'Welcome to Raikan Conveyancing',
+    lead: 'A few simple questions so we can start on your property. Your answers save automatically, so you can stop and come back any time.'
+  }),
+  people: role => ({
+    title: role === 'Purchaser' ? 'Who is buying?' : 'Who is selling?',
+    lead: `Add everyone who will be named on the contract as a ${role === 'Purchaser' ? 'buyer' : 'seller'}.`
+  }),
+  property: role => ({
+    title: 'About the property',
+    lead: role === 'Purchaser'
+      ? 'Tell us about the property and how you plan to pay for it.'
+      : 'Tell us about the property you are selling.'
+  }),
+  stampDuty: () => ({
+    title: 'Stamp duty relief',
+    lead: 'First home buyers may pay less stamp duty. Answer a few quick questions — if you’re unsure, choose “Not sure” and we’ll check for you.'
+  }),
+  review: () => ({ title: 'Check and sign', lead: 'Make sure everything looks right, then sign at the bottom to send it to us.' })
 };
 
 export const ClientIntakeWizard: React.FC = () => {
@@ -430,9 +445,13 @@ export const ClientIntakeWizard: React.FC = () => {
   if (submission) {
     return (
       <div className="rk-form">
-        <FormHeader saveState="none" lastSavedAt={null} />
+        <div className="rk-hero rk-hero-short">
+          <FormHeader saveState="none" lastSavedAt={null} />
+          <div className="rk-hero-inner">
+            <Stepper steps={steps.map(s => stepTitle(s, role))} current={steps.length} allDone />
+          </div>
+        </div>
         <div className="rk-shell">
-          <Stepper steps={steps.map(s => stepTitle(s, role))} current={steps.length} allDone />
           <SubmissionSuccess response={submission.response} formData={submission.formData} onStartAnother={handleStartAnother} />
         </div>
       </div>
@@ -442,10 +461,14 @@ export const ClientIntakeWizard: React.FC = () => {
   if (!ready) {
     return (
       <div className="rk-form">
-        <FormHeader saveState="none" lastSavedAt={null} />
-        <div className="rk-shell rk-loading" role="status">
-          <span className="rk-spinner" aria-hidden="true" />
-          Loading your form…
+        <div className="rk-hero rk-hero-short">
+          <FormHeader saveState="none" lastSavedAt={null} />
+        </div>
+        <div className="rk-shell">
+          <div className="rk-panel rk-loading" role="status">
+            <span className="rk-spinner" aria-hidden="true" />
+            Loading your form…
+          </div>
         </div>
       </div>
     );
@@ -453,21 +476,27 @@ export const ClientIntakeWizard: React.FC = () => {
 
   const heading = STEP_HEADINGS[step](role);
   let primaryLabel = 'Continue';
-  if (isLastStep) primaryLabel = isSubmitting ? 'Sending…' : 'Submit';
+  if (isLastStep) primaryLabel = isSubmitting ? 'Sending…' : 'Submit form';
   else if (returnToReview) primaryLabel = 'Save and go back';
+  // Picking buying / selling already moves on, so the first page only needs a button once a choice is made
+  const showPrimary = step !== 'start' || formData.roleConfirmed;
 
   return (
     <div className="rk-form">
-      <FormHeader saveState={saveState} lastSavedAt={sync.lastSavedAt} />
-      <div className="rk-shell">
-        <Stepper steps={steps.map(s => stepTitle(s, role))} current={stepIndex} />
-
-        <div className="rk-step-body" key={step} onBlurCapture={handleBlurCapture}>
-          <div className="rk-intro">
+      {/* Navy band: brand, progress and the page title; the form card overlaps its lower edge */}
+      <div className="rk-hero">
+        <FormHeader saveState={saveState} lastSavedAt={sync.lastSavedAt} />
+        <div className="rk-hero-inner">
+          <Stepper steps={steps.map(s => stepTitle(s, role))} current={stepIndex} />
+          <div className="rk-intro" key={step}>
             <h1 className="rk-title" tabIndex={-1} ref={headingRef}>{heading.title}</h1>
             {heading.lead && <p className="rk-lead">{heading.lead}</p>}
           </div>
+        </div>
+      </div>
 
+      <div className="rk-shell">
+        <div className="rk-step-body" key={step} onBlurCapture={handleBlurCapture}>
           {restoredNotice && (
             <Notice tone="info" role="status" className="rk-restored">
               <p>Welcome back. We kept your answers.</p>
@@ -559,27 +588,33 @@ export const ClientIntakeWizard: React.FC = () => {
           )}
         </div>
 
-        {/* Navigation */}
-        <div className="rk-nav">
-          {step !== 'start' ? (
-            <button type="button" className="rk-btn rk-btn-secondary" onClick={handleBack} disabled={isSubmitting}>
-              Back
-            </button>
-          ) : <span />}
-          <div className="rk-nav-right">
-            {uploadsInFlight > 0 && isLastStep && <span className="rk-nav-note">Waiting for an upload to finish…</span>}
-            <button
-              type="button"
-              className="rk-btn rk-btn-primary"
-              onClick={isLastStep ? handleSubmitIntake : handleNext}
-              disabled={isSubmitting || (isLastStep && uploadsInFlight > 0)}
-              aria-busy={isSubmitting || undefined}
-            >
-              {isSubmitting && <span className="rk-spinner rk-spinner-light" aria-hidden="true" />}
-              {primaryLabel}
-            </button>
+        {/* Navigation — stays at the bottom of the screen so it never has to be scrolled to */}
+        {showPrimary && (
+          <div className="rk-nav">
+            <div className="rk-nav-inner">
+              {step !== 'start' ? (
+                <button type="button" className="rk-btn rk-btn-ghost rk-nav-back" onClick={handleBack} disabled={isSubmitting}>
+                  <ArrowLeftIcon size={18} />
+                  Back
+                </button>
+              ) : <span />}
+              <div className="rk-nav-right">
+                {uploadsInFlight > 0 && isLastStep && <span className="rk-nav-note">Waiting for an upload to finish…</span>}
+                <button
+                  type="button"
+                  className="rk-btn rk-btn-primary"
+                  onClick={isLastStep ? handleSubmitIntake : handleNext}
+                  disabled={isSubmitting || (isLastStep && uploadsInFlight > 0)}
+                  aria-busy={isSubmitting || undefined}
+                >
+                  {isSubmitting && <span className="rk-spinner rk-spinner-light" aria-hidden="true" />}
+                  {primaryLabel}
+                  {!isSubmitting && !isLastStep && !returnToReview && <ArrowRightIcon size={18} />}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

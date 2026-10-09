@@ -1,7 +1,8 @@
 import React from 'react';
 import { ClientIntakeFormData, DeclarationFormData } from '../../types/index.js';
 import { formatDateLong, signedDateMin, stampDutyVisibility, todayIso } from '../../utils/validation.js';
-import { CheckboxCard, DateField, TextField } from './fields.js';
+import { CheckboxCard, DateField, GroupHeading, Notice, TextField } from './fields.js';
+import { FileIcon, HomeIcon, PenIcon, UserIcon } from './icons.js';
 import { formatFileSize } from './FileUpload.js';
 import { formatAddress, pickAddress, StepKey } from './formState.js';
 import { SignaturePad } from './SignaturePad.js';
@@ -44,21 +45,31 @@ const Row: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, valu
 
 const Section: React.FC<{
   title: string;
+  icon: React.ReactNode;
   onEdit: () => void;
   editLabel: string;
   incomplete?: boolean;
   children: React.ReactNode;
-}> = ({ title, onEdit, editLabel, incomplete, children }) => (
+}> = ({ title, icon, onEdit, editLabel, incomplete, children }) => (
   <section className={`rk-panel rk-review-section${incomplete ? ' rk-review-incomplete' : ''}`}>
     <div className="rk-summary-head">
+      <span className="rk-group-icon" aria-hidden="true">{icon}</span>
       <h2 className="rk-panel-title">
         {title}
         {incomplete && <span className="rk-badge rk-badge-error">Needs attention</span>}
       </h2>
-      <button type="button" className="rk-btn rk-btn-secondary rk-btn-small" onClick={onEdit} aria-label={editLabel}>Edit</button>
+      <button type="button" className="rk-edit-btn" onClick={onEdit} aria-label={editLabel}>
+        <PenIcon size={16} />
+        Edit
+      </button>
     </div>
     <dl className="rk-summary">{children}</dl>
   </section>
+);
+
+/** Numbered sub-heading inside the signing panel: 1 Confirm · 2 Sign · 3 Name and date. */
+const SignStep: React.FC<{ n: number; children: React.ReactNode }> = ({ n, children }) => (
+  <p className="rk-sign-step"><span className="rk-sign-step-n" aria-hidden="true">{n}</span>{children}</p>
 );
 
 export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, errors, live, onDeclarationChange, onEdit, submitError }) => {
@@ -96,7 +107,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
       {formData.parties.map((p, i) => (
         <Section
           key={p.id}
-          title={`${role} ${i + 1}`}
+          title={formData.parties.length > 1 ? `${role} ${i + 1}` : `Your details (${role.toLowerCase()})`}
+          icon={<UserIcon />}
           onEdit={() => onEdit('people', i)}
           editLabel={`Edit ${role} ${i + 1}`}
           incomplete={stepHasProblem('people', i)}
@@ -112,7 +124,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         </Section>
       ))}
 
-      <Section title="Property" onEdit={() => onEdit('property')} editLabel="Edit property details" incomplete={stepHasProblem('property')}>
+      <Section title="Property" icon={<HomeIcon />} onEdit={() => onEdit('property')} editLabel="Edit property details" incomplete={stepHasProblem('property')}>
         <Row label="Address" value={propertyAddress} />
         <Row label={isPurchaser ? 'Purchase price' : 'Sale price'} value={money(property.purchasePrice)} />
         <Row label="Settlement" value={formatDateLong(property.settlementDate) || 'Not known yet'} />
@@ -137,7 +149,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
 
 
       {isPurchaser && (
-        <Section title="Stamp duty relief" onEdit={() => onEdit('stampDuty')} editLabel="Edit stamp duty answers" incomplete={stepHasProblem('stampDuty')}>
+        <Section title="Stamp duty relief" icon={<FileIcon />} onEdit={() => onEdit('stampDuty')} editLabel="Edit stamp duty answers" incomplete={stepHasProblem('stampDuty')}>
           <Row label="Eligible for relief" value={stampDuty.reliefEligible} />
           {sd.firstHomeBuyer && <Row label="First home buyer" value={stampDuty.firstHomeBuyer} />}
           {sd.propertyType && <Row label="Property is" value={stampDuty.propertyType} />}
@@ -150,8 +162,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
       )}
 
       <section className="rk-panel rk-declaration" aria-labelledby="declaration-title">
-        <h2 id="declaration-title" className="rk-panel-title">Sign</h2>
+        <GroupHeading as="h2" icon={<PenIcon />} description="Three quick steps and you’re done.">
+          <span id="declaration-title">Sign and submit</span>
+        </GroupHeading>
 
+        <SignStep n={1}>Please confirm</SignStep>
         {isPurchaser && (
           <CheckboxCard
             id="declaration-coolingOffAcknowledged"
@@ -174,12 +189,15 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
           I/We authorise the conveyancer to act for this property:
         </CheckboxCard>
 
+        <SignStep n={2}>Sign</SignStep>
         <SignaturePad
           id="declaration-signatureDataUrl"
           value={declaration.signatureDataUrl}
           error={errors['declaration-signatureDataUrl']}
           onChange={dataUrl => onDeclarationChange({ signatureDataUrl: dataUrl })}
         />
+
+        <SignStep n={3}>Your name and today’s date</SignStep>
         <div className="rk-row">
           <TextField
             id="declaration-signedName"
@@ -201,7 +219,9 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
             onChange={v => onDeclarationChange({ signedDate: v })}
           />
         </div>
-        <p className="rk-hint rk-field-last">After you submit, LiveSign will email each person a link to verify their ID.</p>
+        <Notice tone="info" className="rk-field-last">
+          <p>After you submit, LiveSign will email each person a link to verify their ID. It takes about 5 minutes on a phone.</p>
+        </Notice>
       </section>
     </>
   );

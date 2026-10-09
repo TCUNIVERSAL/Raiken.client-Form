@@ -1,7 +1,8 @@
 import React from 'react';
 import { StampDutyFormData, YesNo } from '../../types/index.js';
 import { stampDutyVisibility } from '../../utils/validation.js';
-import { ChoiceCards, Notice, OptionalReveal } from './fields.js';
+import { ChoiceCards, GroupHeading, Notice, OptionalReveal } from './fields.js';
+import { FileIcon } from './icons.js';
 
 interface StampDutyStepProps {
   stampDuty: StampDutyFormData;
@@ -27,6 +28,9 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
 
   return (
     <section className="rk-panel" aria-label="Stamp duty relief">
+      <GroupHeading icon={<FileIcon />} description="Revenue SA makes the final decision, which can take 14 days or more.">
+        Check if you qualify
+      </GroupHeading>
 
       <ChoiceCards
         id="stampDuty-reliefEligible"
@@ -49,7 +53,7 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
       {show.propertyType && (
         <ChoiceCards
           id="stampDuty-propertyType"
-          label="The property is"
+          label="What type of property is it?"
           required
           options={[
             { value: 'Vacant Land', label: 'Vacant land' },

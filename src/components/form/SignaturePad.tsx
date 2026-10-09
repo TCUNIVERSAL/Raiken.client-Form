@@ -34,19 +34,12 @@ function shrinkImage(dataUrl: string): Promise<string> {
   });
 }
 
+/**
+ * Empties the drawing surface. The "×" and signing line are drawn by CSS underneath the
+ * canvas, so they are never saved as part of the signature image.
+ */
 function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h);
-  const lineY = Math.round(h * 0.74) + 0.5;
-  const padX = 20;
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padX, lineY);
-  ctx.lineTo(w - padX, lineY);
-  ctx.stroke();
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 15px system-ui, sans-serif';
-  ctx.fillText('×', padX, lineY - 8);
 }
 
 /**
@@ -225,6 +218,10 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, on
             Sign in the box with your finger or mouse.
           </p>
           <div className="rk-signature-pad" ref={containerRef}>
+            <span className="rk-signature-guide" aria-hidden="true">
+              {!value && <span className="rk-signature-placeholder">Sign here</span>}
+              <span className="rk-signature-x">×</span>
+            </span>
             <canvas
               ref={canvasRef}
               className="rk-signature-canvas"

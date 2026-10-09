@@ -13,7 +13,10 @@ import {
  *   sent as soon as the browser is back online.
  */
 
-export type SyncStatus = 'loading' | 'idle' | 'saving' | 'saved' | 'offline';
+/** offline: the device has no connection · error: online, but the server could not save (retrying). */
+export type SyncStatus = 'loading' | 'idle' | 'saving' | 'saved' | 'offline' | 'error';
+
+const notSavedStatus = (): SyncStatus => (navigator.onLine ? 'error' : 'offline');
 
 export interface SyncSnapshot {
   formData: ClientIntakeFormData;
@@ -136,7 +139,7 @@ export function useSessionSync(enabled: boolean) {
     if (unsavedRef.current && saved) {
       return flush();
     }
-    setStatus(saved ? 'saved' : 'offline');
+    setStatus(saved ? 'saved' : notSavedStatus());
     return saved;
   }, []);
 
@@ -185,7 +188,7 @@ export function useSessionSync(enabled: boolean) {
       clearOfflineBuffer(); // left over from an older, finished form
     }
 
-    setStatus(server ? (unsavedRef.current ? 'saving' : 'idle') : 'offline');
+    setStatus(server ? (unsavedRef.current ? 'saving' : 'idle') : notSavedStatus());
     if (server && unsavedRef.current) void flush();
     if (!chosen) return null;
     return { ...chosen, hasAnswers: chosen.formData.roleConfirmed };
@@ -201,10 +204,10 @@ export function useSessionSync(enabled: boolean) {
     try {
       const { ok, body } = await fetchJson('/api/session/new', { method: 'POST' });
       sessionIdRef.current = ok && body?.session?.id ? body.session.id : null;
-      setStatus(ok ? 'idle' : 'offline');
+      setStatus(ok ? 'idle' : notSavedStatus());
     } catch {
       sessionIdRef.current = null;
-      setStatus('offline');
+      setStatus(notSavedStatus());
     }
   }, []);
 
@@ -220,7 +223,11 @@ export function useSessionSync(enabled: boolean) {
 
   // Send anything waiting as soon as the connection comes back
   useEffect(() => {
-    const onOnline = () => { void flush(); };
+    const onOnline = async () => {
+      const ok = await flush();
+      // Nothing was waiting to be sent: clear the offline warning instead of keeping it until the next change
+      if (ok) setStatus(s => (s === 'offline' || s === 'error' ? 'saved' : s));
+    };
     const onOffline = () => setStatus('offline');
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);

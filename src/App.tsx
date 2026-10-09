@@ -9,14 +9,15 @@ export const App: React.FC = () => {
 
   return (
     <div className="rk-app">
-      <main className="rk-main">
+      <a className="rk-skip-link" href="#rk-main">Skip to the form</a>
+      <main className="rk-main" id="rk-main">
         <ClientIntakeWizard />
       </main>
 
       <footer className="rk-footer">
         <div className="rk-footer-inner">
-          <p>&copy; {new Date().getFullYear()} Client Intake Portal · All rights reserved</p>
-          <p className="rk-footer-secure">Encrypted client intake & identity verification system</p>
+          <p>Need help? Call <a href="tel:+61870769899">08 7076 9899</a> · Stored privately · ID checks by LiveSign</p>
+          <p className="rk-footer-copy">&copy; {new Date().getFullYear()} Raikan Conveyancing</p>
         </div>
       </footer>
     </div>

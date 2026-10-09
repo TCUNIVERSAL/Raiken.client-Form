@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { HelpAndError, LabelText, TickIcon } from './fields.js';
+import { ErrorText, LabelText, TickIcon } from './fields.js';
 
 /** Country dial codes — most common first, then alphabetical. */
 export const COUNTRY_CODES = [
@@ -71,6 +71,8 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   const [search, setSearch] = useState('');
   const [highlighted, setHighlighted] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const selected = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
 
@@ -82,11 +84,11 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
       })
     : [...COUNTRY_CODES];
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (the code button itself toggles it)
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
         setSearch('');
       }
@@ -111,6 +113,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
     onCountryCodeChange(code);
     setOpen(false);
     setSearch('');
+    buttonRef.current?.focus();
   }, [onCountryCodeChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -130,6 +133,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
       case 'Escape':
         setOpen(false);
         setSearch('');
+        buttonRef.current?.focus();
         break;
     }
   }, [filtered, highlighted, selectCountry]);
@@ -145,20 +149,21 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   const placeholder = selected.code === '+61' ? 'e.g. 0412 345 678' : 'Phone number';
 
   return (
-    <div className={`rk-field${error ? ' rk-invalid' : ''}`}>
-      <div className="rk-box rk-box-phone">
-        <label htmlFor={id} className="rk-box-label">
-          <LabelText label={label} required={required} />
-        </label>
-        <div className="rk-phone-group">
+    <div className={`rk-field rk-phone-field${error ? ' rk-invalid' : ''}`} ref={wrapRef}>
+      <label htmlFor={id} className="rk-label">
+        <LabelText label={label} required={required} />
+      </label>
+      {hint && <p id={`${id}-hint`} className="rk-hint">{hint}</p>}
+      <div className={`rk-control rk-phone-group${valid && !error ? ' rk-control-valid' : ''}`}>
           {/* Country code button */}
           <button
+            ref={buttonRef}
             type="button"
             className="rk-phone-code-btn"
-            onClick={() => setOpen(!open)}
+            onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-haspopup="listbox"
-            aria-label={`Country code: ${selected.flag} ${selected.code}`}
+            aria-label={`Country code ${selected.label} ${selected.code}. Change country code`}
           >
             <span className="rk-phone-flag">{selected.flag}</span>
             <span className="rk-phone-code-text">{selected.code}</span>
@@ -172,17 +177,16 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
             id={id}
             type="tel"
             inputMode="tel"
-            className="rk-box-input rk-phone-input"
+            className="rk-input rk-phone-input"
             value={phoneNumber}
             placeholder={placeholder}
             autoComplete="tel-national"
             maxLength={20}
-            aria-required={required}
+            aria-required={required || undefined}
             aria-invalid={Boolean(error)}
             aria-describedby={describedBy(id, hint, error)}
             onChange={e => onPhoneChange(e.target.value)}
           />
-        </div>
         {valid && !error && <TickIcon className="rk-tick" />}
       </div>
 
@@ -222,7 +226,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
         </div>
       )}
 
-      <HelpAndError id={id} hint={hint} error={error} />
+      <ErrorText id={id} error={error} />
     </div>
   );
 };

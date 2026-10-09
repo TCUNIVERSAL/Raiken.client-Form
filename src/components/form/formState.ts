@@ -19,7 +19,7 @@ export function stepTitle(key: StepKey, role: ConveyancingRole): string {
     case 'people': return `${role}s`;
     case 'property': return 'Property';
     case 'stampDuty': return 'Stamp duty';
-    case 'review': return 'Review & confirm';
+    case 'review': return 'Check and sign';
   }
 }
 
@@ -157,6 +157,15 @@ export function applySameAsAbove(parties: PartyFormData[], index: number, checke
     Object.assign(next[index], untouched ? blank : {}, { sameAddressAsPrevious: false });
   }
   return next;
+}
+
+/** True when anything has been entered for this person (so removing them would lose data). */
+export function partyHasAnswers(p: PartyFormData): boolean {
+  return Boolean(
+    p.firstName.trim() || p.middleName.trim() || p.lastName.trim() || p.email.trim() || p.mobile.trim() || p.dob ||
+    p.addressLine1.trim() || p.suburb.trim() || p.postcode.trim() || p.residencyStatus || p.occupation.trim() ||
+    p.idDocuments.length
+  );
 }
 
 // ─── Restoring saved data ───────────────────────────────────────────────────

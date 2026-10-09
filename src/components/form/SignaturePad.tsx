@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ErrorText, LabelText, TickIcon } from './fields.js';
 
 type SignatureMode = 'draw' | 'upload';
 
@@ -9,37 +10,65 @@ interface SignaturePadProps {
   onChange: (dataUrl: string) => void;
 }
 
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+/** Uploaded signature images are scaled down to fit this box before they are saved. */
+const MAX_IMAGE_WIDTH = 900;
+const MAX_IMAGE_HEIGHT = 300;
+
+/** Re-draws an uploaded image at a small size so the saved signature stays a few KB, not MB. */
+function shrinkImage(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_IMAGE_WIDTH / img.width, MAX_IMAGE_HEIGHT / img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas not available'));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Unreadable image'));
+    img.src = dataUrl;
+  });
+}
+
+function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.clearRect(0, 0, w, h);
+  const lineY = Math.round(h * 0.74) + 0.5;
+  const padX = 20;
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padX, lineY);
+  ctx.lineTo(w - padX, lineY);
+  ctx.stroke();
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '600 15px system-ui, sans-serif';
+  ctx.fillText('×', padX, lineY - 8);
+}
+
 /**
- * Signature pad with two modes:
- *  • Draw  — freehand canvas signature
- *  • Upload — upload a signature image (PNG, JPG, etc.)
+ * Signature with two modes:
+ *  • Draw   — sign with a mouse, finger or stylus
+ *  • Upload — use an image of an existing signature
+ * Either way the result is stored as a PNG data URL in the declaration.
  */
 export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, onChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<SignatureMode>('draw');
-  const [drawing, setDrawing] = useState(false);
-  const [hasStrokes, setHasStrokes] = useState(Boolean(value));
-  const [uploadedPreview, setUploadedPreview] = useState<string>('');
-  const [uploadFileName, setUploadFileName] = useState('');
+  const drawingRef = useRef(false);
   const lastPoint = useRef<{ x: number; y: number } | null>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
-  // ─── Coordinate helpers ────────────────────────────────────────────────
-  const getPoint = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    if ('touches' in e) {
-      const t = e.touches[0];
-      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
-    }
-    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
-  }, []);
+  const [mode, setMode] = useState<SignatureMode>('draw');
+  const [uploadError, setUploadError] = useState('');
+  const [processing, setProcessing] = useState(false);
 
-  // ─── Resize canvas to fill its container ───────────────────────────────
+  // ─── Canvas sizing (sharp on high-DPI screens; drawing uses CSS pixels) ────
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -47,73 +76,71 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, on
     const dpr = window.devicePixelRatio || 1;
     const w = container.clientWidth;
     const h = container.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawGuide(ctx, w, h);
-    // Restore existing signature image if there is one and we're in draw mode
-    if (value && mode === 'draw' && hasStrokes) {
+    // Keep an existing signature visible after a resize or a page reload
+    const saved = valueRef.current;
+    if (saved) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, w, h);
+        const scale = Math.min(w / img.width, h / img.height, 1);
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
       };
-      img.src = value;
+      img.src = saved;
     }
-  }, [value, mode, hasStrokes]);
+  }, []);
 
   useEffect(() => {
-    if (mode === 'draw') {
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-      return () => window.removeEventListener('resize', resizeCanvas);
-    }
+    if (mode !== 'draw') return;
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    return () => window.removeEventListener('resize', resizeCanvas);
   }, [resizeCanvas, mode]);
 
-  // ─── Signature guide line and × mark ───────────────────────────────────
-  function drawGuide(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    ctx.clearRect(0, 0, w, h);
-    const lineY = h * 0.78;
-    const padX = 24;
-    ctx.strokeStyle = '#b7b6c4';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padX, lineY);
-    ctx.lineTo(w - padX, lineY);
-    ctx.stroke();
-    const xCenter = padX + 8;
-    const xSize = 6;
-    ctx.strokeStyle = '#8c8b9c';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(xCenter - xSize, lineY - xSize);
-    ctx.lineTo(xCenter + xSize, lineY + xSize);
-    ctx.moveTo(xCenter + xSize, lineY - xSize);
-    ctx.lineTo(xCenter - xSize, lineY + xSize);
-    ctx.stroke();
-  }
+  const pointFrom = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
 
-  // ─── Draw strokes ─────────────────────────────────────────────────────
-  const startDraw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (mode !== 'draw') return;
+  // ─── Drawing ────────────────────────────────────────────────────────────
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.preventDefault();
-    setDrawing(true);
-    lastPoint.current = getPoint(e);
-  }, [getPoint, mode]);
+    try {
+      // Keeps the stroke going if the finger slides outside the box
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      // The pointer is no longer active — drawing still works without capture
+    }
+    drawingRef.current = true;
+    const pt = pointFrom(e);
+    lastPoint.current = pt;
+    // A tap leaves a dot
+    const ctx = e.currentTarget.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#172033';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
 
-  const moveDraw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!drawing || !lastPoint.current) return;
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current || !lastPoint.current) return;
     e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = e.currentTarget.getContext('2d');
     if (!ctx) return;
-    const pt = getPoint(e);
-    ctx.strokeStyle = '#1c1b29';
-    ctx.lineWidth = 2;
+    const pt = pointFrom(e);
+    ctx.strokeStyle = '#172033';
+    ctx.lineWidth = e.pointerType === 'pen' && e.pressure ? 1.4 + e.pressure * 1.6 : 2.2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -121,171 +148,144 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, on
     ctx.lineTo(pt.x, pt.y);
     ctx.stroke();
     lastPoint.current = pt;
-    setHasStrokes(true);
-  }, [drawing, getPoint]);
+  };
 
-  const endDraw = useCallback(() => {
-    if (!drawing) return;
-    setDrawing(false);
+  const endStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
     lastPoint.current = null;
-    const canvas = canvasRef.current;
-    if (canvas) onChange(canvas.toDataURL('image/png'));
-  }, [drawing, onChange]);
+    onChange(e.currentTarget.toDataURL('image/png'));
+  };
 
-  useEffect(() => {
-    const handleUp = () => { if (drawing) endDraw(); };
-    window.addEventListener('mouseup', handleUp);
-    window.addEventListener('touchend', handleUp);
-    return () => {
-      window.removeEventListener('mouseup', handleUp);
-      window.removeEventListener('touchend', handleUp);
-    };
-  }, [drawing, endDraw]);
-
-  // ─── Upload mode ──────────────────────────────────────────────────────
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // ─── Upload ─────────────────────────────────────────────────────────────
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (PNG, JPG, etc.).');
+    setUploadError('');
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
+      setUploadError('Please choose a PNG or JPG image of your signature.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('The image is too large. Please use a file under 5 MB.');
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setUploadError('This image is larger than 5 MB. Please choose a smaller image.');
       return;
     }
-    setUploadFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setUploadedPreview(dataUrl);
-      onChange(dataUrl);
-    };
-    reader.readAsDataURL(file);
-  }, [onChange]);
+    setProcessing(true);
+    try {
+      const raw = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      onChange(await shrinkImage(raw));
+    } catch {
+      setUploadError('This image could not be read. Please try a different file.');
+    } finally {
+      setProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
-  // ─── Clear ─────────────────────────────────────────────────────────────
-  const clear = useCallback(() => {
-    if (mode === 'draw') {
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (!canvas || !container) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      drawGuide(ctx, container.clientWidth, container.clientHeight);
-    }
-    setHasStrokes(false);
-    setUploadedPreview('');
-    setUploadFileName('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  // ─── Clear / switch ─────────────────────────────────────────────────────
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && container) drawGuide(ctx, container.clientWidth, container.clientHeight);
+    setUploadError('');
     onChange('');
-  }, [onChange, mode]);
+  };
 
-  // ─── Mode switch ──────────────────────────────────────────────────────
-  const switchMode = useCallback((newMode: SignatureMode) => {
-    clear();
-    setMode(newMode);
-  }, [clear]);
+  const switchMode = (next: SignatureMode) => {
+    if (next === mode) return;
+    if (value) onChange('');
+    setUploadError('');
+    setMode(next);
+  };
 
-  const hasValue = mode === 'upload' ? Boolean(uploadedPreview) : hasStrokes;
+  const describedBy = [`${id}-instructions`, error ? `${id}-error` : ''].filter(Boolean).join(' ');
 
   return (
-    <div className={`rk-field rk-signature-field${error ? ' rk-invalid' : ''}`} id={id}>
-      <p className="rk-question">
-        Signature<span className="rk-req" aria-hidden="true">*</span>:
-      </p>
-
-      {/* Mode switcher tabs */}
-      <div className="rk-signature-tabs" role="tablist" aria-label="Signature method">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'draw'}
-          className={`rk-signature-tab${mode === 'draw' ? ' rk-signature-tab-active' : ''}`}
-          onClick={() => switchMode('draw')}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-          </svg>
-          Draw
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'upload'}
-          className={`rk-signature-tab${mode === 'upload' ? ' rk-signature-tab-active' : ''}`}
-          onClick={() => switchMode('upload')}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          Upload
-        </button>
+    <div className={`rk-field rk-signature${error ? ' rk-invalid' : ''}`} id={id} tabIndex={-1}>
+      <div className="rk-signature-head">
+        <p className="rk-label" id={`${id}-label`}><LabelText label="Signature" required /></p>
+        <div className="rk-segmented" role="group" aria-label="How would you like to sign?">
+          <button type="button" className="rk-segment" aria-pressed={mode === 'draw'} onClick={() => switchMode('draw')}>
+            Draw
+          </button>
+          <button type="button" className="rk-segment" aria-pressed={mode === 'upload'} onClick={() => switchMode('upload')}>
+            Upload image
+          </button>
+        </div>
       </div>
 
       {mode === 'draw' ? (
-        /* ─── Draw mode: canvas ──────────────────────────────────── */
-        <div className="rk-signature-pad" ref={containerRef}>
-          <canvas
-            ref={canvasRef}
-            className="rk-signature-canvas"
-            onMouseDown={startDraw}
-            onMouseMove={moveDraw}
-            onMouseUp={endDraw}
-            onMouseLeave={endDraw}
-            onTouchStart={startDraw}
-            onTouchMove={moveDraw}
-            onTouchEnd={endDraw}
-            role="img"
-            aria-label="Signature drawing area. Use your mouse or finger to sign."
-          />
-          {!hasStrokes && (
-            <div className="rk-signature-placeholder" aria-hidden="true">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8c8b9c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                <path d="m15 5 4 4" />
-              </svg>
-            </div>
-          )}
-        </div>
+        <>
+          <p className="rk-hint" id={`${id}-instructions`}>
+            Sign in the box with your finger or mouse.
+          </p>
+          <div className="rk-signature-pad" ref={containerRef}>
+            <canvas
+              ref={canvasRef}
+              className="rk-signature-canvas"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={endStroke}
+              onPointerCancel={endStroke}
+              role="img"
+              aria-labelledby={`${id}-label`}
+              aria-describedby={describedBy}
+            />
+          </div>
+        </>
       ) : (
-        /* ─── Upload mode: file picker + preview ─────────────────── */
-        <div className="rk-signature-upload-area">
-          {uploadedPreview ? (
-            <div className="rk-signature-upload-preview">
-              <img src={uploadedPreview} alt="Uploaded signature" className="rk-signature-upload-img" />
-              <p className="rk-hint">{uploadFileName}</p>
-            </div>
-          ) : (
-            <label className="rk-signature-upload-dropzone" htmlFor={`${id}-file`}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8c8b9c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span className="rk-signature-upload-text">Click to upload your signature</span>
-              <span className="rk-hint">PNG, JPG or GIF — max 5 MB</span>
-            </label>
-          )}
+        <>
+          <p className="rk-hint" id={`${id}-instructions`}>
+            A photo of your signature on white paper (PNG or JPG).
+          </p>
           <input
             ref={fileInputRef}
             id={`${id}-file`}
             type="file"
             accept="image/png,image/jpeg,image/gif,image/webp"
-            className="rk-signature-upload-input"
-            onChange={handleFileSelect}
+            className="rk-file-input"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={e => void handleFile(e.target.files?.[0])}
           />
-        </div>
+          {value ? (
+            <div className="rk-signature-preview">
+              <img src={value} alt="Your uploaded signature" />
+            </div>
+          ) : (
+            <div className="rk-dropzone rk-dropzone-small">
+              <button
+                type="button"
+                className="rk-btn rk-btn-secondary rk-btn-small"
+                onClick={() => fileInputRef.current?.click()}
+                aria-describedby={describedBy}
+                disabled={processing}
+              >
+                {processing ? 'Preparing image…' : 'Choose signature image'}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {hasValue && (
-        <button type="button" className="rk-signature-clear" onClick={clear} aria-label="Clear signature">
-          Clear signature
-        </button>
-      )}
-      {error && <p className="rk-error" role="alert">{error}</p>}
+      <div className="rk-signature-foot">
+        <p className={`rk-signature-status${value ? ' rk-signature-status-ok' : ''}`} aria-live="polite">
+          {value ? <><TickIcon /> Signed</> : ''}
+        </p>
+        <div className="rk-signature-actions">
+          {mode === 'upload' && value && (
+            <button type="button" className="rk-link-button" onClick={() => fileInputRef.current?.click()}>Replace image</button>
+          )}
+          {value && <button type="button" className="rk-link-button" onClick={clear}>Clear signature</button>}
+        </div>
+      </div>
+      {uploadError && <ErrorText id={`${id}-upload`} error={uploadError} />}
+      <ErrorText id={id} error={error} />
     </div>
   );
 };

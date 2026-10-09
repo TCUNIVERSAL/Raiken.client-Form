@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { DocumentKind, UploadedDocument } from '../../types/index.js';
+import { ErrorText, TickIcon } from './fields.js';
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -127,22 +128,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className="rk-field">
-      <p className="rk-question" id={`${id}-label`}>
+      <p className="rk-label" id={`${id}-label`}>
         {label}<span className="rk-opt"> (optional)</span>
       </p>
-      {hint && <p className="rk-hint rk-question-hint">{hint}</p>}
-
-      {kind === 'identity' && (
-        <div className="rk-compliance-badge">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          <span>
-            <strong>ARNECC VOI Compliant:</strong> Documents are 256-bit encrypted and verified under the Australian Model Participation Rules for electronic conveyancing.
-          </span>
-        </div>
-      )}
+      {hint && <p className="rk-hint" id={`${id}-hint`}>{hint}</p>}
 
       <input
         ref={inputRef}
@@ -171,13 +160,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           }}
         >
           <UploadIcon />
-          <p>
-            <button type="button" className="rk-link-button" onClick={openPicker} aria-describedby={`${id}-label`}>
-              Click to upload
-            </button>{' '}
-            or drag and drop
-          </p>
-          <p className="rk-hint">PDF, JPG or PNG · up to 5 MB each · up to {maxFiles} files</p>
+          <div className="rk-dropzone-text">
+            <button
+              type="button"
+              className="rk-btn rk-btn-secondary rk-btn-small"
+              onClick={openPicker}
+              aria-describedby={`${id}-label${hint ? ` ${id}-hint` : ''} ${id}-rules`}
+            >
+              Choose file
+            </button>
+            <span className="rk-dropzone-or">or drag and drop it here</span>
+          </div>
+          <p className="rk-hint" id={`${id}-rules`}>PDF, JPG or PNG · up to 5 MB each · up to {maxFiles} files</p>
         </div>
       )}
 
@@ -196,6 +190,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           ))}
           {value.map(doc => (
             <li key={doc.id} className="rk-file rk-file-done">
+              <span className="rk-file-ok-icon" aria-hidden="true"><TickIcon /></span>
               <div className="rk-file-main">
                 <span className="rk-file-name">{doc.fileName}</span>
                 <span className="rk-file-status rk-file-ok">Uploaded · {formatFileSize(doc.sizeBytes)}</span>
@@ -208,9 +203,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </ul>
       )}
 
-      {errors.map((message, i) => (
-        <p key={i} className="rk-error" role="alert">{message}</p>
-      ))}
+      {errors.length > 0 && (
+        <div role="alert">
+          {errors.map((message, i) => <ErrorText key={i} id={`${id}-upload-${i}`} error={message} />)}
+          {slotsLeft > 0 && (
+            <button type="button" className="rk-link-button" onClick={openPicker}>Try another file</button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

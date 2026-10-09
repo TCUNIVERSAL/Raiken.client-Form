@@ -1,7 +1,8 @@
 import React from 'react';
 import { ClientIntakeFormData, FinanceFormData, PropertyFormData } from '../../types/index.js';
-import { settlementMax, settlementMin, POPULAR_SA_SUBURBS } from '../../utils/validation.js';
-import { CheckboxCard, ChoiceCards, DateField, Suggestions, TextField } from './fields.js';
+import { formatDateLong, settlementMax, settlementMin } from '../../utils/validation.js';
+import { addDaysIso } from '../../utils/format.js';
+import { CheckboxCard, ChoiceCards, CurrencyField, DateField, Notice, OptionalReveal, SelectField, TextField } from './fields.js';
 import { FileUpload } from './FileUpload.js';
 
 interface PropertyStepProps {
@@ -11,123 +12,90 @@ interface PropertyStepProps {
   onPropertyChange: (patch: Partial<PropertyFormData>) => void;
   onFinanceChange: (patch: Partial<FinanceFormData>) => void;
   onHowDidYouHearChange: (value: string) => void;
+  onUploadingChange: (uploading: boolean) => void;
 }
 
-const BANKS = ['Commonwealth Bank', 'Westpac', 'ANZ', 'NAB', 'BankSA', "People's Choice"];
-const HEARD_FROM = ['Google search', 'Facebook', 'Friend or family', 'Real estate agent', 'Mortgage broker', 'I am a returning client'];
-
-function addDaysIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+const HEARD_FROM = ['Google search', 'Facebook', 'Friend or family', 'Real estate agent', 'Mortgage broker', 'I am a returning client', 'Other'];
+const SETTLEMENT_PERIODS = [30, 45, 60, 90];
 
 export const PropertyStep: React.FC<PropertyStepProps> = ({
-  formData, errors, live, onPropertyChange, onFinanceChange, onHowDidYouHearChange
+  formData, errors, live, onPropertyChange, onFinanceChange, onHowDidYouHearChange, onUploadingChange
 }) => {
   const { property, finance } = formData;
   const isPurchaser = formData.role === 'Purchaser';
   const ok = (id: string, value: string) => Boolean(value.trim()) && !live[id];
-  const moneyOnly = (v: string) => v.replace(/[^\d.]/g, '');
-
+  const hasBrokerDetails = Boolean(finance.brokerOrBankerName || finance.lenderName || finance.brokerPhone || finance.brokerEmail);
+  // A free-text answer saved before this became a list is still shown
+  const heardOptions = formData.howDidYouHear && !HEARD_FROM.includes(formData.howDidYouHear)
+    ? [...HEARD_FROM, formData.howDidYouHear]
+    : HEARD_FROM;
 
   return (
     <>
-      <section className="rk-panel" aria-labelledby="property-title">
-        <div className="rk-panel-head">
-          <h2 id="property-title" className="rk-panel-title">
-            {isPurchaser ? 'The property you are buying' : 'The property you are selling'}
-          </h2>
-        </div>
-        <TextField id="property-addressLine1" label="Property address" required placeholder="e.g. 12 King William Street"
-          value={property.addressLine1} error={errors['property-addressLine1']} valid={ok('property-addressLine1', property.addressLine1)}
+      <section className="rk-panel" aria-label="Property">
+        <TextField id="property-addressLine1" label="Property address (SA)" required placeholder="e.g. 12 King William Street"
+          autoComplete="off"
+          value={property.addressLine1} error={errors['property-addressLine1']}
           onChange={v => onPropertyChange({ addressLine1: v })} />
-        <TextField id="property-suburb" label="Suburb / town" required placeholder="e.g. Adelaide"
-          value={property.suburb} error={errors['property-suburb']} valid={ok('property-suburb', property.suburb)}
-          onChange={v => onPropertyChange({ suburb: v })} />
-        {!property.suburb && (
-          <div className="rk-suggestions rk-suburb-quick">
-            <p className="rk-overline">Quick fill:</p>
-            <div className="rk-chips">
-              {POPULAR_SA_SUBURBS.slice(0, 6).map(item => (
-                <button
-                  key={item.suburb}
-                  type="button"
-                  className="rk-chip"
-                  onClick={() => onPropertyChange({ suburb: item.suburb, postcode: item.postcode })}
-                >
-                  {item.suburb} ({item.postcode})
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="rk-row">
-          <TextField id="property-state" label="State" required value="SA" readOnly valid
-            hint="We handle South Australian properties only." onChange={() => undefined} />
-          <TextField id="property-postcode" label="Postcode" required placeholder="e.g. 5000" inputMode="numeric" maxLength={4}
+        <div className="rk-row rk-row-pair">
+          <TextField id="property-suburb" label="Suburb" required autoComplete="off"
+            value={property.suburb} error={errors['property-suburb']}
+            onChange={v => onPropertyChange({ suburb: v })} />
+          <TextField id="property-postcode" label="Postcode" required inputMode="numeric" maxLength={4}
+            autoComplete="off"
             value={property.postcode} error={errors['property-postcode']} valid={ok('property-postcode', property.postcode)}
             onChange={v => onPropertyChange({ postcode: v.replace(/\D/g, '').slice(0, 4) })} />
         </div>
-        <TextField
-          id="property-purchasePrice"
-          label={isPurchaser ? 'Purchase price (AUD)' : 'Sale price (AUD)'}
-          required={isPurchaser}
-          hint="Numbers only, without $ or commas."
-          placeholder="e.g. 650000"
-          inputMode="decimal"
-          maxLength={12}
-          value={property.purchasePrice}
-          error={errors['property-purchasePrice']}
-          valid={ok('property-purchasePrice', property.purchasePrice)}
-          onChange={v => onPropertyChange({ purchasePrice: moneyOnly(v) })}
-        />
-        {property.purchasePrice && !isNaN(Number(property.purchasePrice)) && Number(property.purchasePrice) > 0 && (
-          <p className="rk-price-preview" aria-live="polite">
-            <span className="rk-price-preview-badge">
-              💰 Formatted: {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(Number(property.purchasePrice))} AUD
-            </span>
-          </p>
-        )}
-        <DateField
-          id="property-settlementDate"
-          label="Settlement date (if known)"
-          hint="Leave this empty if you do not know the date yet."
-          min={settlementMin()}
-          max={settlementMax()}
-          value={property.settlementDate}
-          error={errors['property-settlementDate']}
-          valid={ok('property-settlementDate', property.settlementDate)}
-          onChange={v => onPropertyChange({ settlementDate: v })}
-        />
-        <div className="rk-suggestions rk-settlement-quick">
-          <p className="rk-overline">Standard settlement terms:</p>
-          <div className="rk-chips">
-            {[30, 45, 60, 90].map(days => {
-              const dateIso = addDaysIso(days);
-              const isSelected = property.settlementDate === dateIso;
-              return (
-                <button
-                  key={days}
-                  type="button"
-                  className={`rk-chip${isSelected ? ' rk-chip-active' : ''}`}
-                  onClick={() => onPropertyChange({ settlementDate: dateIso })}
-                >
-                  +{days} Days ({new Date(dateIso + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })})
-                </button>
-              );
-            })}
+
+        <div className="rk-row">
+          <CurrencyField
+            id="property-purchasePrice"
+            label={isPurchaser ? 'Purchase price' : 'Sale price'}
+            required={isPurchaser}
+            value={property.purchasePrice}
+            error={errors['property-purchasePrice']}
+            onChange={v => onPropertyChange({ purchasePrice: v })}
+          />
+          <div>
+            <DateField
+              id="property-settlementDate"
+              label="Settlement date"
+              min={settlementMin()}
+              max={settlementMax()}
+              value={property.settlementDate}
+              error={errors['property-settlementDate']}
+              onChange={v => onPropertyChange({ settlementDate: v })}
+            />
+            <div className="rk-chips rk-chips-tight" role="group" aria-label="Quick pick a settlement date, counted from today">
+              {SETTLEMENT_PERIODS.map(days => {
+                const dateIso = addDaysIso(days);
+                const isSelected = property.settlementDate === dateIso;
+                return (
+                  <button
+                    key={days}
+                    type="button"
+                    className={`rk-chip rk-chip-small${isSelected ? ' rk-chip-active' : ''}`}
+                    aria-pressed={isSelected}
+                    aria-label={`${days} days from today: ${formatDateLong(dateIso)}`}
+                    onClick={() => onPropertyChange({ settlementDate: dateIso })}
+                  >
+                    {days} days
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {isPurchaser && (
           <ChoiceCards
             id="property-intendedUse"
-            label="This property is for"
+            label="The property is"
             required
+            size="compact"
             options={[
-              { value: 'To live in', label: 'To live in', description: 'It will be my / our home.' },
-              { value: 'For investment', label: 'For investment', description: 'I / we will rent it out or hold it as an investment.' }
+              { value: 'To live in', label: 'To live in' },
+              { value: 'For investment', label: 'An investment' }
             ]}
             value={property.intendedUse}
             error={errors['property-intendedUse']}
@@ -138,13 +106,13 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
         {isPurchaser && (
           <ChoiceCards
             id="property-ownershipType"
-            label="We would like to own the property as"
+            label="Own it as"
             required
             columns={3}
             options={[
-              { value: 'Joint Tenants', label: 'Joint tenants', description: 'You own the whole property together, in equal shares.' },
-              { value: 'Tenants in Common', label: 'Tenants in common', description: 'Each person owns a set share, e.g. 60% / 40%.' },
-              { value: 'Not Sure', label: 'Not sure', description: 'We will explain the options and help you choose.' }
+              { value: 'Joint Tenants', label: 'Joint tenants', description: 'Equal shares' },
+              { value: 'Tenants in Common', label: 'Tenants in common', description: 'Set shares, e.g. 60/40' },
+              { value: 'Not Sure', label: 'Not sure', description: 'We’ll help you choose' }
             ]}
             value={property.ownershipType}
             error={errors['property-ownershipType']}
@@ -154,16 +122,15 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
       </section>
 
       <section className="rk-panel" aria-labelledby="finance-title">
-        <div className="rk-panel-head">
-          <h2 id="finance-title" className="rk-panel-title">{isPurchaser ? 'Mortgage and payment' : 'Existing mortgage'}</h2>
-        </div>
+        <h2 id="finance-title" className="rk-panel-title">{isPurchaser ? 'Paying for it' : 'Mortgage'}</h2>
         <ChoiceCards
           id="finance-mortgageRequired"
-          label={isPurchaser ? 'Are you taking a mortgage?' : 'Do you have a mortgage on the property?'}
+          label={isPurchaser ? 'Taking a mortgage?' : 'Is there a mortgage on the property?'}
           required
           columns={3}
+          size="compact"
           options={isPurchaser
-            ? [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'Maybe', label: 'Maybe' }]
+            ? [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'Maybe', label: 'Not sure' }]
             : [{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
           value={finance.mortgageRequired}
           error={errors['finance-mortgageRequired']}
@@ -171,109 +138,124 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
         />
 
         {isPurchaser && (
-          <>
-            <p className="rk-question">My banker / mortgage broker details are <span className="rk-opt">(optional)</span></p>
+          <OptionalReveal label="Add broker or bank contact" open={hasBrokerDetails}>
             <div className="rk-row">
-              <TextField id="finance-brokerOrBankerName" label="Name" placeholder="e.g. Sarah Jenkins"
-                value={finance.brokerOrBankerName} valid={ok('finance-brokerOrBankerName', finance.brokerOrBankerName)}
+              <TextField id="finance-brokerOrBankerName" label="Contact name" autoComplete="off"
+                value={finance.brokerOrBankerName}
                 onChange={v => onFinanceChange({ brokerOrBankerName: v })} />
-              <TextField id="finance-brokerPhone" type="tel" inputMode="tel" label="Contact number" placeholder="e.g. 0412 345 678" maxLength={20}
-                value={finance.brokerPhone} error={errors['finance-brokerPhone']} valid={ok('finance-brokerPhone', finance.brokerPhone)}
-                onChange={v => onFinanceChange({ brokerPhone: v })} />
-            </div>
-            <div className="rk-row">
-              <TextField id="finance-brokerEmail" type="email" inputMode="email" label="E-mail address" placeholder="e.g. sarah@broker.com.au"
-                value={finance.brokerEmail} error={errors['finance-brokerEmail']} valid={ok('finance-brokerEmail', finance.brokerEmail)}
-                onChange={v => onFinanceChange({ brokerEmail: v })} />
-              <TextField id="finance-lenderName" label="Company name" placeholder="e.g. Commonwealth Bank"
-                value={finance.lenderName} valid={ok('finance-lenderName', finance.lenderName)}
+              <TextField id="finance-lenderName" label="Bank or company" autoComplete="off"
+                value={finance.lenderName}
                 onChange={v => onFinanceChange({ lenderName: v })} />
             </div>
-            <Suggestions items={BANKS} current={finance.lenderName} onPick={v => onFinanceChange({ lenderName: v })} />
-            <TextField id="howDidYouHear" label="How did you hear about us?" placeholder="e.g. Google search"
-              value={formData.howDidYouHear} valid={Boolean(formData.howDidYouHear.trim())}
-              onChange={onHowDidYouHearChange} />
-            <Suggestions items={HEARD_FROM} current={formData.howDidYouHear} onPick={onHowDidYouHearChange} />
-          </>
+            <div className="rk-row">
+              <TextField id="finance-brokerPhone" type="tel" inputMode="tel" label="Phone" maxLength={20}
+                autoComplete="off"
+                value={finance.brokerPhone} error={errors['finance-brokerPhone']} valid={ok('finance-brokerPhone', finance.brokerPhone)}
+                onChange={v => onFinanceChange({ brokerPhone: v })} />
+              <TextField id="finance-brokerEmail" type="email" inputMode="email" label="Email"
+                autoComplete="off"
+                value={finance.brokerEmail} error={errors['finance-brokerEmail']} valid={ok('finance-brokerEmail', finance.brokerEmail)}
+                onChange={v => onFinanceChange({ brokerEmail: v })} />
+            </div>
+          </OptionalReveal>
         )}
 
         {isPurchaser && (
           <fieldset id="finance-paysByElectronicTransfer" tabIndex={-1}
+            aria-describedby="finance-pay-hint"
             className={`rk-field rk-fieldset${errors['finance-paysByElectronicTransfer'] ? ' rk-invalid' : ''}`}>
-            <legend className="rk-question">How will you pay for this property?<span className="rk-req" aria-hidden="true">*</span></legend>
-            <p className="rk-hint rk-question-hint">Tick all that apply. This is required for the anti-money-laundering (AML) check.</p>
-            <div className="rk-cards rk-cols-1">
+            <legend className="rk-label">How will you pay?<span className="rk-req" aria-hidden="true"> *</span><span className="rk-sr-only"> (required)</span></legend>
+            <p className="rk-hint" id="finance-pay-hint">Tick all that apply. Required for anti-money-laundering checks.</p>
+            <div className="rk-check-list">
               <CheckboxCard id="finance-pay-transfer" checked={finance.paysByElectronicTransfer}
-                description="Including your home loan and money from your bank account."
                 onChange={checked => onFinanceChange({ paysByElectronicTransfer: checked })}>
-                Bank transfer
+                Bank transfer or loan
               </CheckboxCard>
               <CheckboxCard id="finance-pay-cash" checked={finance.paysByCash}
                 onChange={checked => onFinanceChange({ paysByCash: checked, cashAmount: checked ? finance.cashAmount : '' })}>
                 Cash
               </CheckboxCard>
               {finance.paysByCash && (
-                <TextField id="finance-cashAmount" label="Cash amount (AUD)" required placeholder="e.g. 20000" inputMode="decimal" maxLength={12}
-                  value={finance.cashAmount} error={errors['finance-cashAmount']} valid={ok('finance-cashAmount', finance.cashAmount)}
-                  onChange={v => onFinanceChange({ cashAmount: moneyOnly(v) })} />
+                <div className="rk-reveal">
+                  <CurrencyField id="finance-cashAmount" label="Cash amount" required
+                    value={finance.cashAmount} error={errors['finance-cashAmount']}
+                    className="rk-w-half"
+                    onChange={v => onFinanceChange({ cashAmount: v })} />
+                </div>
               )}
               <CheckboxCard id="finance-pay-virtual" checked={finance.paysByVirtualAssets}
                 onChange={checked => onFinanceChange({ paysByVirtualAssets: checked, virtualAssetsAmount: checked ? finance.virtualAssetsAmount : '' })}>
-                Cryptocurrency or other digital assets
+                Cryptocurrency
               </CheckboxCard>
               {finance.paysByVirtualAssets && (
-                <TextField id="finance-virtualAssetsAmount" label="Amount (AUD)" required placeholder="e.g. 50000" inputMode="decimal" maxLength={12}
-                  value={finance.virtualAssetsAmount} error={errors['finance-virtualAssetsAmount']} valid={ok('finance-virtualAssetsAmount', finance.virtualAssetsAmount)}
-                  onChange={v => onFinanceChange({ virtualAssetsAmount: moneyOnly(v) })} />
+                <div className="rk-reveal">
+                  <CurrencyField id="finance-virtualAssetsAmount" label="Amount" required
+                    value={finance.virtualAssetsAmount} error={errors['finance-virtualAssetsAmount']}
+                    className="rk-w-half"
+                    onChange={v => onFinanceChange({ virtualAssetsAmount: v })} />
+                </div>
               )}
               <CheckboxCard id="finance-pay-other" checked={finance.paysByOther}
                 onChange={checked => onFinanceChange({ paysByOther: checked, otherPaymentDetails: checked ? finance.otherPaymentDetails : '' })}>
                 Other
               </CheckboxCard>
               {finance.paysByOther && (
-                <TextField id="finance-otherPaymentDetails" label="Please describe" required placeholder="e.g. Gift from family" maxLength={300}
-                  value={finance.otherPaymentDetails} error={errors['finance-otherPaymentDetails']} valid={ok('finance-otherPaymentDetails', finance.otherPaymentDetails)}
-                  onChange={v => onFinanceChange({ otherPaymentDetails: v })} />
-              )}
-
-              {(finance.paysByVirtualAssets || finance.paysByOther) && (
-                <div className="rk-sof-wrap">
-                  <div className="rk-compliance-badge rk-compliance-amber">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                      <circle cx="12" cy="12" r="1" />
-                    </svg>
-                    <span>
-                      <strong>AML Compliance Notice:</strong> Digital asset or third-party funds require source of wealth verification under AUSTRAC guidelines.
-                    </span>
-                  </div>
-                  <FileUpload
-                    id="finance-sourceOfFunds"
-                    label="Source of Wealth / Proof of Funds"
-                    hint="Upload bank statement, crypto wallet history, or gift declaration (PDF, JPG, PNG)"
-                    kind="source_of_funds"
-                    value={finance.sourceOfFundsDocuments || []}
-                    onAdd={doc => onFinanceChange({ sourceOfFundsDocuments: [...(finance.sourceOfFundsDocuments || []), doc] })}
-                    onRemove={docId => onFinanceChange({ sourceOfFundsDocuments: (finance.sourceOfFundsDocuments || []).filter(d => d.id !== docId) })}
-                  />
+                <div className="rk-reveal">
+                  <TextField id="finance-otherPaymentDetails" label="Please describe" required placeholder="e.g. Gift from family" maxLength={300}
+                    value={finance.otherPaymentDetails} error={errors['finance-otherPaymentDetails']}
+                    onChange={v => onFinanceChange({ otherPaymentDetails: v })} />
                 </div>
               )}
             </div>
-            {errors['finance-paysByElectronicTransfer'] && <p className="rk-error" role="alert">{errors['finance-paysByElectronicTransfer']}</p>}
+            {errors['finance-paysByElectronicTransfer'] && (
+              <p id="finance-paysByElectronicTransfer-error" className="rk-error">
+                <span>{errors['finance-paysByElectronicTransfer']}</span>
+              </p>
+            )}
+
+            {(finance.paysByVirtualAssets || finance.paysByOther) && (
+              <div className="rk-reveal">
+                <Notice tone="warning">
+                  <p>
+                    AUSTRAC rules require proof of where crypto or third-party funds come from.
+                    Upload it now or send it to us later.
+                  </p>
+                </Notice>
+                <FileUpload
+                  id="finance-sourceOfFunds"
+                  label="Proof of funds"
+                  hint="Bank statement, wallet history or gift letter."
+                  kind="source_of_funds"
+                  value={finance.sourceOfFundsDocuments || []}
+                  onAdd={doc => onFinanceChange({ sourceOfFundsDocuments: [...(finance.sourceOfFundsDocuments || []), doc] })}
+                  onRemove={docId => onFinanceChange({ sourceOfFundsDocuments: (finance.sourceOfFundsDocuments || []).filter(d => d.id !== docId) })}
+                  onUploadingChange={onUploadingChange}
+                />
+              </div>
+            )}
           </fieldset>
         )}
 
         {!isPurchaser && finance.mortgageRequired === 'Yes' && (
-          <>
-            <TextField id="finance-lenderName" label="Bank name" required placeholder="e.g. Commonwealth Bank"
-              value={finance.lenderName} error={errors['finance-lenderName']} valid={ok('finance-lenderName', finance.lenderName)}
+          <div className="rk-reveal">
+            <TextField id="finance-lenderName" label="Which bank?" required placeholder="e.g. Commonwealth Bank"
+              value={finance.lenderName} error={errors['finance-lenderName']} className="rk-w-half"
               onChange={v => onFinanceChange({ lenderName: v })} />
-            <Suggestions items={BANKS} current={finance.lenderName} onPick={v => onFinanceChange({ lenderName: v })} />
-          </>
+          </div>
+        )}
+
+        {isPurchaser && (
+          <SelectField
+            id="howDidYouHear"
+            label="How did you hear about us?"
+            placeholder="Choose"
+            options={heardOptions.map(h => ({ value: h, label: h }))}
+            value={formData.howDidYouHear}
+            className="rk-w-half rk-field-last"
+            onChange={onHowDidYouHearChange}
+          />
         )}
       </section>
-
-
     </>
   );
 };

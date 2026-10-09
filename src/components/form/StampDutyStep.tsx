@@ -1,7 +1,7 @@
 import React from 'react';
 import { StampDutyFormData, YesNo } from '../../types/index.js';
 import { stampDutyVisibility } from '../../utils/validation.js';
-import { ChoiceCards } from './fields.js';
+import { ChoiceCards, Notice, OptionalReveal } from './fields.js';
 
 interface StampDutyStepProps {
   stampDuty: StampDutyFormData;
@@ -26,21 +26,14 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
   const e = (key: string) => errors[`stampDuty-${key}`];
 
   return (
-    <section className="rk-panel" aria-labelledby="stamp-duty-title">
-      <div className="rk-panel-head">
-        <h2 id="stamp-duty-title" className="rk-panel-title">Stamp duty relief</h2>
-        <p className="rk-hint">
-          These questions check whether you might be eligible for stamp duty relief. If you are, an application
-          must be lodged with Revenue SA, and their decision can take 14 days or more. More questions appear
-          below depending on your answers.
-        </p>
-      </div>
+    <section className="rk-panel" aria-label="Stamp duty relief">
 
       <ChoiceCards
         id="stampDuty-reliefEligible"
-        label="Are you eligible for stamp duty relief?"
+        label="Do you think you’re eligible for stamp duty relief?"
         required
         columns={3}
+        size="compact"
         options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'Not Sure', label: 'Not sure' }]}
         value={stampDuty.reliefEligible}
         error={e('reliefEligible')}
@@ -49,7 +42,7 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
 
       {show.firstHomeBuyer && (
         <ChoiceCards id="stampDuty-firstHomeBuyer" label="Are you a first home buyer in Australia?" required
-          options={YES_NO} value={stampDuty.firstHomeBuyer} error={e('firstHomeBuyer')}
+          size="compact" options={YES_NO} value={stampDuty.firstHomeBuyer} error={e('firstHomeBuyer')}
           onChange={v => onChange({ firstHomeBuyer: v as YesNo })} />
       )}
 
@@ -62,7 +55,7 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
             { value: 'Vacant Land', label: 'Vacant land' },
             { value: 'Brand New Home', label: 'Brand new home' },
             { value: 'Established Home', label: 'Established home' },
-            { value: 'Established Home With Substantial Renovation', label: 'Established home with substantial renovation' }
+            { value: 'Established Home With Substantial Renovation', label: 'Substantially renovated home' }
           ]}
           value={stampDuty.propertyType}
           error={e('propertyType')}
@@ -72,57 +65,54 @@ export const StampDutyStep: React.FC<StampDutyStepProps> = ({ stampDuty, errors,
 
       {show.signedAfter && (
         <ChoiceCards id="stampDuty-contractSignedOnOrAfter6Jul2024" label="Was the contract of sale signed on or after 6 July 2024?" required
-          options={YES_NO} value={stampDuty.contractSignedOnOrAfter6Jul2024} error={e('contractSignedOnOrAfter6Jul2024')}
+          size="compact" options={YES_NO} value={stampDuty.contractSignedOnOrAfter6Jul2024} error={e('contractSignedOnOrAfter6Jul2024')}
           onChange={v => onChange({ contractSignedOnOrAfter6Jul2024: v as YesNo })} />
       )}
 
       {show.signedBetween && (
         <ChoiceCards id="stampDuty-contractSignedBetween15Jun2023And5Jul2024"
           label="Was the contract of sale signed between 15 June 2023 and 5 July 2024?" required
-          options={YES_NO} value={stampDuty.contractSignedBetween15Jun2023And5Jul2024} error={e('contractSignedBetween15Jun2023And5Jul2024')}
+          size="compact" options={YES_NO} value={stampDuty.contractSignedBetween15Jun2023And5Jul2024} error={e('contractSignedBetween15Jun2023And5Jul2024')}
           onChange={v => onChange({ contractSignedBetween15Jun2023And5Jul2024: v as YesNo })} />
       )}
 
       {show.threshold && (
         <ChoiceCards id="stampDuty-underPriceThreshold"
           label="Is the property a new home under $700,000, or vacant land under $450,000?" required
-          options={YES_NO} value={stampDuty.underPriceThreshold} error={e('underPriceThreshold')}
+          size="compact" options={YES_NO} value={stampDuty.underPriceThreshold} error={e('underPriceThreshold')}
           onChange={v => onChange({ underPriceThreshold: v as YesNo })} />
       )}
 
       {show.criteria && (
         <ChoiceCards id="stampDuty-meetsEligibilityCriteria" label="Do you meet all of the following eligibility criteria?" required
           hint={ELIGIBILITY_CRITERIA}
-          options={YES_NO} value={stampDuty.meetsEligibilityCriteria} error={e('meetsEligibilityCriteria')}
+          size="compact" options={YES_NO} value={stampDuty.meetsEligibilityCriteria} error={e('meetsEligibilityCriteria')}
           onChange={v => onChange({ meetsEligibilityCriteria: v as YesNo })} />
       )}
 
       {stampDuty.meetsEligibilityCriteria === 'Yes' && (
-        <div className="rk-info-box rk-stamp-duty-estimate" role="status">
-          <p className="rk-question">🎉 Potential Stamp Duty Relief Identified</p>
-          <p className="rk-hint">
-            Based on your answers, you appear eligible for South Australian First Home Buyer Stamp Duty Relief.
-            Under current SA legislation, eligible new homes or vacant land can save up to <strong>$25,000+</strong> in stamp duty.
-            We will prepare and lodge the formal relief application with RevenueSA on your behalf.
-          </p>
-        </div>
+        <Notice tone="success" role="status">
+          <p>You may qualify for relief. Revenue SA makes the final decision; we’ll guide you through it.</p>
+        </Notice>
       )}
 
       {show.notes && (
-        <div className="rk-field">
-          <label htmlFor="stampDuty-notes" className="rk-question">
-            Anything else we should know about stamp duty relief? <span className="rk-opt">(optional)</span>
-          </label>
-          <textarea
-            id="stampDuty-notes"
-            className="rk-textarea"
-            rows={3}
-            maxLength={1000}
-            placeholder="e.g. My partner owned a unit in Victoria but never lived in it."
-            value={stampDuty.notes}
-            onChange={ev => onChange({ notes: ev.target.value })}
-          />
-        </div>
+        <OptionalReveal label="Add a note about stamp duty (optional)" open={Boolean(stampDuty.notes)}>
+          <div className="rk-field">
+            <label htmlFor="stampDuty-notes" className="rk-label">
+              Note <span className="rk-opt">(optional)</span>
+            </label>
+            <textarea
+              id="stampDuty-notes"
+              className="rk-input rk-textarea"
+              rows={3}
+              maxLength={1000}
+              placeholder="e.g. My partner owned a unit in Victoria but never lived in it."
+              value={stampDuty.notes}
+              onChange={ev => onChange({ notes: ev.target.value })}
+            />
+          </div>
+        </OptionalReveal>
       )}
     </section>
   );

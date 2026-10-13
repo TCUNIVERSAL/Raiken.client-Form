@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { DocumentKind, UploadedDocument } from '../../types/index.js';
-import { ErrorText, TickIcon } from './fields.js';
+import { ErrorText } from './fields.js';
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -31,13 +31,6 @@ function checkFile(file: File): { mimeType?: string; error?: string } {
   return { mimeType };
 }
 
-const UploadIcon = () => (
-  <svg className="rk-upload-icon" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false">
-    <path d="M11 6h13l7 7v19a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-    <path d="M20 29V17m0 0l-5 5m5-5l5 5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 interface FileUploadProps {
   id: string;
   label: string;
@@ -50,6 +43,7 @@ interface FileUploadProps {
   onRemove: (docId: string) => void;
   value: UploadedDocument[];
   onUploadingChange?: (uploading: boolean) => void;
+  wide?: boolean;
 }
 
 interface Pending {
@@ -59,7 +53,7 @@ interface Pending {
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
-  id, label, hint, kind, partyId, maxFiles = 4, value, onAdd, onRemove, onUploadingChange
+  id, label, hint, kind, partyId, maxFiles = 4, value, onAdd, onRemove, onUploadingChange, wide
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending[]>([]);
@@ -127,11 +121,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const openPicker = () => inputRef.current?.click();
 
   return (
-    <div className="rk-field">
-      <p className="rk-label" id={`${id}-label`}>
-        {label}<span className="rk-opt"> (optional)</span>
+    <div className={`rk-field${wide ? ' rk-wide' : ''}`}>
+      <p className="rk-field-label" id={`${id}-label`}>
+        {label}<span className="rk-optional"> (optional)</span>
       </p>
-      {hint && <p className="rk-hint" id={`${id}-hint`}>{hint}</p>}
+      <p className="rk-hint" id={`${id}-hint`}>
+        {hint ? `${hint} ` : ''}Up to {maxFiles} PDF, JPG or PNG files, 5 MB each.
+      </p>
 
       <input
         ref={inputRef}
@@ -150,7 +146,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       {slotsLeft > 0 && (
         <div
-          className={`rk-dropzone${dragOver ? ' rk-dropzone-active' : ''}`}
+          className={`rk-file-box${dragOver ? ' rk-file-box-active' : ''}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={e => {
@@ -159,19 +155,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             handleFiles(e.dataTransfer.files);
           }}
         >
-          <UploadIcon />
-          <div className="rk-dropzone-text">
-            <button
-              type="button"
-              className="rk-btn rk-btn-secondary rk-btn-small"
-              onClick={openPicker}
-              aria-describedby={`${id}-label${hint ? ` ${id}-hint` : ''} ${id}-rules`}
-            >
-              Choose file
-            </button>
-            <span className="rk-dropzone-or">or drag and drop it here</span>
-          </div>
-          <p className="rk-hint" id={`${id}-rules`}>PDF, JPG or PNG · up to 5 MB each · up to {maxFiles} files</p>
+          <button
+            type="button"
+            className="rk-file-button"
+            onClick={openPicker}
+            aria-describedby={`${id}-label ${id}-hint`}
+          >
+            Choose files
+          </button>
+          <span className="rk-file-box-text">{value.length ? `${value.length} uploaded` : 'No file chosen'} · or drag files here</span>
         </div>
       )}
 
@@ -182,20 +174,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               <div className="rk-file-main">
                 <span className="rk-file-name">{p.fileName}</span>
                 <span className="rk-file-status">Uploading… {p.progress}%</span>
-                <span className="rk-progress" role="progressbar" aria-valuenow={p.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`Uploading ${p.fileName}`}>
-                  <span className="rk-progress-fill" style={{ width: `${p.progress}%` }} />
+                <span className="rk-progress-mini" role="progressbar" aria-valuenow={p.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`Uploading ${p.fileName}`}>
+                  <span className="rk-progress-mini-fill" style={{ width: `${p.progress}%` }} />
                 </span>
               </div>
             </li>
           ))}
           {value.map(doc => (
-            <li key={doc.id} className="rk-file rk-file-done">
-              <span className="rk-file-ok-icon" aria-hidden="true"><TickIcon /></span>
+            <li key={doc.id} className="rk-file">
               <div className="rk-file-main">
                 <span className="rk-file-name">{doc.fileName}</span>
                 <span className="rk-file-status rk-file-ok">Uploaded · {formatFileSize(doc.sizeBytes)}</span>
               </div>
-              <button type="button" className="rk-link-button rk-danger" onClick={() => onRemove(doc.id)} aria-label={`Remove ${doc.fileName}`}>
+              <button type="button" className="rk-link-button" onClick={() => onRemove(doc.id)} aria-label={`Remove ${doc.fileName}`}>
                 Remove
               </button>
             </li>

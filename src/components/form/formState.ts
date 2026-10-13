@@ -13,13 +13,13 @@ export function stepsFor(role: ConveyancingRole): StepKey[] {
     : ['start', 'people', 'property', 'review'];
 }
 
-export function stepTitle(key: StepKey, role: ConveyancingRole): string {
+export function stepTitle(key: StepKey, _role: ConveyancingRole): string {
   switch (key) {
     case 'start': return 'Start';
-    case 'people': return `${role}s`;
-    case 'property': return 'Property';
+    case 'people': return 'Your details';
+    case 'property': return 'Property details';
     case 'stampDuty': return 'Stamp duty';
-    case 'review': return 'Check and sign';
+    case 'review': return 'Review';
   }
 }
 

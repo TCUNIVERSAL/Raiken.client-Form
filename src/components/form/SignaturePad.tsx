@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ErrorText, LabelText, TickIcon } from './fields.js';
+import { ErrorText, TickIcon } from './fields.js';
 
 type SignatureMode = 'draw' | 'upload';
 
@@ -203,46 +203,37 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, on
     setMode(next);
   };
 
-  const describedBy = [`${id}-instructions`, error ? `${id}-error` : ''].filter(Boolean).join(' ');
+  // An error replaces the instructions line, so the screen keeps its height
+  const describedBy = error ? `${id}-error` : `${id}-instructions`;
 
   return (
-    <div className={`rk-field rk-signature${error ? ' rk-invalid' : ''}`} id={id} tabIndex={-1}>
-      <div className="rk-signature-head">
-        <p className="rk-label" id={`${id}-label`}><LabelText label="Signature" required /></p>
-        <div className="rk-segmented" role="group" aria-label="How would you like to sign?">
-          <button type="button" className="rk-segment" aria-pressed={mode === 'draw'} onClick={() => switchMode('draw')}>
-            Draw
+    <div className={`rk-signature${error ? ' rk-has-error' : ''}`} id={id} tabIndex={-1}>
+      <div className="rk-signature-label">
+        <strong id={`${id}-label`}>Signature</strong>
+        <div className="rk-signature-buttons">
+          <button type="button" onClick={() => switchMode(mode === 'draw' ? 'upload' : 'draw')}>
+            {mode === 'draw' ? 'Upload an image instead' : 'Draw instead'}
           </button>
-          <button type="button" className="rk-segment" aria-pressed={mode === 'upload'} onClick={() => switchMode('upload')}>
-            Upload image
-          </button>
+          {value && <button type="button" onClick={clear}>Clear</button>}
         </div>
       </div>
 
       {mode === 'draw' ? (
-        <>
-          <p className="rk-hint" id={`${id}-instructions`}>
-            Sign in the box with your finger or mouse.
-          </p>
-          <div className="rk-signature-pad" ref={containerRef}>
-            <canvas
-              ref={canvasRef}
-              className="rk-signature-canvas"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={endStroke}
-              onPointerCancel={endStroke}
-              role="img"
-              aria-labelledby={`${id}-label`}
-              aria-describedby={describedBy}
-            />
-          </div>
-        </>
+        <div className="rk-signature-pad" ref={containerRef}>
+          <canvas
+            ref={canvasRef}
+            className="rk-signature-canvas"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={endStroke}
+            onPointerCancel={endStroke}
+            role="img"
+            aria-labelledby={`${id}-label`}
+            aria-describedby={describedBy}
+          />
+        </div>
       ) : (
         <>
-          <p className="rk-hint" id={`${id}-instructions`}>
-            A photo of your signature on white paper (PNG or JPG).
-          </p>
           <input
             ref={fileInputRef}
             id={`${id}-file`}
@@ -258,34 +249,32 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ id, value, error, on
               <img src={value} alt="Your uploaded signature" />
             </div>
           ) : (
-            <div className="rk-dropzone rk-dropzone-small">
+            <div className="rk-file-box">
               <button
                 type="button"
-                className="rk-btn rk-btn-secondary rk-btn-small"
+                className="rk-file-button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-describedby={describedBy}
                 disabled={processing}
               >
-                {processing ? 'Preparing image…' : 'Choose signature image'}
+                {processing ? 'Preparing image…' : 'Choose image'}
               </button>
+              <span className="rk-file-box-text">No file chosen</span>
             </div>
           )}
         </>
       )}
 
-      <div className="rk-signature-foot">
-        <p className={`rk-signature-status${value ? ' rk-signature-status-ok' : ''}`} aria-live="polite">
-          {value ? <><TickIcon /> Signed</> : ''}
+      {error && !value ? <ErrorText id={id} error={error} /> : (
+        <p className="rk-hint" id={`${id}-instructions`}>
+          {value
+            ? <span className="rk-signature-ok"><TickIcon /> Signature added</span>
+            : mode === 'draw'
+              ? 'Draw with a mouse, touch, or pen.'
+              : 'A photo of your signature on white paper (PNG or JPG, up to 5 MB).'}
         </p>
-        <div className="rk-signature-actions">
-          {mode === 'upload' && value && (
-            <button type="button" className="rk-link-button" onClick={() => fileInputRef.current?.click()}>Replace image</button>
-          )}
-          {value && <button type="button" className="rk-link-button" onClick={clear}>Clear signature</button>}
-        </div>
-      </div>
+      )}
       {uploadError && <ErrorText id={`${id}-upload`} error={uploadError} />}
-      <ErrorText id={id} error={error} />
     </div>
   );
 };

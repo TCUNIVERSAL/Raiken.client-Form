@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ErrorText, LabelText, TickIcon } from './fields.js';
+import { ErrorText, LabelText, useFieldValid } from './fields.js';
 
 /** Country dial codes — most common first, then alphabetical. */
 export const COUNTRY_CODES = [
@@ -45,7 +45,7 @@ export const COUNTRY_CODES = [
 
 function describedBy(id: string, hint?: string, error?: string) {
   const parts: string[] = [];
-  if (hint) parts.push(`${id}-hint`);
+  if (hint && !error) parts.push(`${id}-hint`); // the error replaces the hint while shown
   if (error) parts.push(`${id}-error`);
   return parts.length ? parts.join(' ') : undefined;
 }
@@ -60,12 +60,12 @@ interface PhoneFieldProps {
   required?: boolean;
   hint?: string;
   error?: string;
-  valid?: boolean;
+  wide?: boolean;
 }
 
 export const PhoneField: React.FC<PhoneFieldProps> = ({
   id, label, countryCode, phoneNumber, onCountryCodeChange, onPhoneChange,
-  required, hint, error, valid
+  required, hint, error, wide
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -146,15 +146,20 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
     if (item) item.scrollIntoView({ block: 'nearest' });
   }, [highlighted, open]);
 
-  const placeholder = selected.code === '+61' ? 'e.g. 0412 345 678' : 'Phone number';
+  // As in the design preview, the box repeats its label
+  const placeholder = typeof label === 'string' ? label : 'Phone number';
+  const valid = useFieldValid(id, Boolean(phoneNumber.trim()), error);
 
   return (
-    <div className={`rk-field rk-phone-field${error ? ' rk-invalid' : ''}`} ref={wrapRef}>
-      <label htmlFor={id} className="rk-label">
-        <LabelText label={label} required={required} />
-      </label>
-      {hint && <p id={`${id}-hint`} className="rk-hint">{hint}</p>}
-      <div className={`rk-control rk-phone-group${valid && !error ? ' rk-control-valid' : ''}`}>
+    <div className={`rk-field rk-phone-field${wide ? ' rk-wide' : ''}${error ? ' rk-has-error' : ''}${valid ? ' rk-valid' : ''}`} ref={wrapRef}>
+      <div className="rk-field-top">
+        <label htmlFor={id}>
+          <LabelText label={label} required={required} />
+        </label>
+        <ErrorText id={id} error={error} />
+      </div>
+      {hint && !error && <p id={`${id}-hint`} className="rk-hint">{hint}</p>}
+      <div className="rk-phone-group">
           {/* Country code button */}
           <button
             ref={buttonRef}
@@ -177,7 +182,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
             id={id}
             type="tel"
             inputMode="tel"
-            className="rk-input rk-phone-input"
+            className="rk-input"
             value={phoneNumber}
             placeholder={placeholder}
             autoComplete="tel-national"
@@ -187,7 +192,6 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
             aria-describedby={describedBy(id, hint, error)}
             onChange={e => onPhoneChange(e.target.value)}
           />
-        {valid && !error && <TickIcon className="rk-tick" />}
       </div>
 
       {/* Searchable dropdown */}
@@ -225,8 +229,6 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
           </ul>
         </div>
       )}
-
-      <ErrorText id={id} error={error} />
     </div>
   );
 };

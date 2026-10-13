@@ -3,7 +3,7 @@ import {
   ClientIntakeFormData, ConveyancingRole, DeclarationFormData, FinanceFormData, PartyFormData,
   PropertyFormData, StampDutyFormData, SubmissionResponse, UploadedDocument
 } from '../types/index.js';
-import { RoleSelector } from './RoleSelector.js';
+import { SetupStep } from './SetupStep.js';
 import { SubmissionSuccess } from './SubmissionSuccess.js';
 import { getRememberedUser, saveUserIdentityCookies, collectClientTelemetry } from '../utils/tracker.js';
 import {
@@ -12,15 +12,16 @@ import {
 } from '../utils/validation.js';
 import {
   Address, applyAddressChange, applySameAsAbove, collectDocuments, createInitialFormData, createParty,
-  MAX_PARTIES, StepKey, stepFromNumber, stepsFor, stepTitle, stepToNumber
+  MAX_PARTIES, partyHasAnswers, StepKey, stepFromNumber, stepsFor, stepTitle, stepToNumber
 } from './form/formState.js';
-import { ErrorSummary, Notice, Stepper } from './form/fields.js';
-import { PeopleStep } from './form/PeopleStep.js';
+import { ErrorSummary, FieldProblemsContext, Notice, Stepper } from './form/fields.js';
+import { partyDisplayName, PeopleStep } from './form/PeopleStep.js';
 import { PropertyStep } from './form/PropertyStep.js';
 import { StampDutyStep } from './form/StampDutyStep.js';
 import { ReviewProblem, ReviewStep } from './form/ReviewStep.js';
+import { allScreens, PersonScreen, PropertyScreen, ScreenId, screensFor } from './form/screens.js';
 import { useSessionSync } from './form/useSessionSync.js';
-import { FormHeader, saveStateFor } from './form/FormHeader.js';
+import { SaveStatus, saveStateFor } from './form/SaveStatus.js';
 import '../form.css';
 
 function prefixKeys(errors: FieldErrors, prefix: string): FieldErrors {
@@ -29,20 +30,21 @@ function prefixKeys(errors: FieldErrors, prefix: string): FieldErrors {
   return out;
 }
 
-const STEP_HEADINGS: Record<StepKey, (role: ConveyancingRole) => { title: string; lead?: string }> = {
-  start: () => ({ title: 'Let’s get started', lead: 'About 10 minutes. Your answers save as you go.' }),
-  people: role => ({ title: role === 'Purchaser' ? 'Who is buying?' : 'Who is selling?' }),
-  property: () => ({ title: 'The property' }),
-  stampDuty: () => ({ title: 'Stamp duty relief', lead: 'For first home buyers. Revenue SA decides; it can take 14+ days.' }),
-  review: () => ({ title: 'Check and sign' })
+/** Shown in the button that leads to the next step. */
+const NEXT_STEP_LABEL: Partial<Record<StepKey, string>> = {
+  property: 'property',
+  stampDuty: 'stamp duty',
+  review: 'review'
 };
 
 export const ClientIntakeWizard: React.FC = () => {
   const [step, setStep] = useState<StepKey>('start');
   const [partyIndex, setPartyIndex] = useState(0);
+  /** Each person has two pages; the other steps are one page each (see screens.ts). */
+  const [screenId, setScreenId] = useState<ScreenId>('details');
   const [formData, setFormData] = useState<ClientIntakeFormData>(createInitialFormData);
   const [attempted, setAttempted] = useState<Partial<Record<StepKey, boolean>>>({});
-  /** Fields the client has filled in and left — their format errors show without waiting for "Continue". */
+  /** Fields the client has visited and left — their messages show without waiting for "Continue". */
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const [returnToReview, setReturnToReview] = useState(false);
   const [uploadsInFlight, setUploadsInFlight] = useState(0);
@@ -61,12 +63,20 @@ export const ClientIntakeWizard: React.FC = () => {
   const restoreAppliedRef = useRef(false);
   const submittingRef = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const stepChangedByUser = useRef(false);
+  const pageChangedByUser = useRef(false);
+  /** Where to return when the client opens "Change" (buying/selling, number of people) and keeps their choices. */
+  const stepBeforeSetupRef = useRef<StepKey | null>(null);
 
   const role = formData.role;
+  const roleLower = role.toLowerCase();
   const steps = stepsFor(role);
-  const stepIndex = Math.max(0, steps.indexOf(step));
-  const isLastStep = step === 'review';
+  const formSteps: StepKey[] = steps.filter(s => s !== 'start');
+  const total = formData.parties.length;
+
+  const screens = screensFor(step, formData, partyIndex);
+  const screenIndex = Math.max(0, screens.findIndex(s => s.id === screenId));
+  const screen = screens[screenIndex];
+  const isFinalScreen = step === 'review';
 
   // ─── Load saved answers from the server (or this device when offline) ─────
   useEffect(() => {
@@ -77,9 +87,11 @@ export const ClientIntakeWizard: React.FC = () => {
         if (cancelled || restoreAppliedRef.current) return;
         restoreAppliedRef.current = true;
         if (restored?.hasAnswers) {
+          const restoredStep = stepFromNumber(restored.formData.role, restored.currentStep);
           setFormData(restored.formData);
-          setStep(stepFromNumber(restored.formData.role, restored.currentStep));
+          setStep(restoredStep);
           setPartyIndex(restored.partyIndex);
+          setScreenId(screensFor(restoredStep, restored.formData, restored.partyIndex)[0]?.id ?? 'details');
           setRestoredNotice(restored.currentStep > 1);
         } else {
           // Nothing saved yet — pre-fill contact details remembered from an earlier visit
@@ -124,12 +136,12 @@ export const ClientIntakeWizard: React.FC = () => {
   /** Marks the next state change as important enough to save without waiting. */
   const saveSoon = () => { saveImmediatelyRef.current = true; };
 
-  // Start each step at the top and move keyboard / screen-reader focus to its heading
+  // Start each screen at the top and move keyboard / screen-reader focus to its heading
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (stepChangedByUser.current) headingRef.current?.focus({ preventScroll: true });
-    stepChangedByUser.current = false;
-  }, [step]);
+    if (pageChangedByUser.current) headingRef.current?.focus({ preventScroll: true });
+    pageChangedByUser.current = false;
+  }, [step, partyIndex, screen?.id]);
 
   // ─── Validation ────────────────────────────────────────────────────────────
   const errorsForStep = (s: StepKey, data: ClientIntakeFormData = formData): FieldErrors => {
@@ -137,7 +149,6 @@ export const ClientIntakeWizard: React.FC = () => {
       case 'start':
         return data.roleConfirmed ? {} : { role: 'Please choose whether you are buying or selling.' };
       case 'people': {
-        // Validate ALL parties' details AND addresses together
         let allErrors: FieldErrors = {};
         data.parties.forEach(p => {
           allErrors = { ...allErrors, ...prefixKeys(validatePartyDetails(p), `${p.id}-`) };
@@ -154,33 +165,19 @@ export const ClientIntakeWizard: React.FC = () => {
     }
   };
 
-  // Live errors drive the ✓ marks. Errors are shown for fields the client has filled in and left,
-  // and for every field once they try to continue.
   const liveErrors = errorsForStep(step);
-  const errors: FieldErrors = {};
+  /** Only the open screen's questions count when pressing "Continue". */
+  const pageErrors: FieldErrors = {};
   Object.entries(liveErrors).forEach(([key, message]) => {
-    if (attempted[step] || touched.has(key)) errors[key] = message;
+    if (screen?.owns(key)) pageErrors[key] = message;
   });
 
-  // On pages where several people answer the same questions, say whose answer is missing
-  // On the people step each person gets one short line (it opens their panel); each field shows its own message.
-  const summaryErrors: FieldErrors = {};
-  if (attempted[step]) {
-    const ownerOf = (key: string) => (step === 'people'
-      ? formData.parties.findIndex(p => key.startsWith(`${p.id}-`))
-      : -1);
-    const keys = Object.keys(liveErrors);
-    keys.forEach(key => {
-      const owner = ownerOf(key);
-      if (owner === -1) summaryErrors[key] = liveErrors[key];
-      else if (!Object.keys(summaryErrors).some(k => ownerOf(k) === owner)) {
-        const count = keys.filter(k => ownerOf(k) === owner).length;
-        summaryErrors[key] = count === 1
-          ? `${role} ${owner + 1}: ${liveErrors[key]}`
-          : `${role} ${owner + 1}: ${count} answers to complete`;
-      }
-    });
-  }
+  // Errors show for fields the client has left (empty or wrong), and for every field once they press Continue
+  const errors: FieldErrors = {};
+  Object.entries(pageErrors).forEach(([key, message]) => {
+    if (attempted[step] || touched.has(key)) errors[key] = message;
+  });
+  const summaryErrors: FieldErrors = attempted[step] ? pageErrors : {};
 
   const reviewProblems: ReviewProblem[] = [];
   formData.parties.forEach((p, i) => {
@@ -200,12 +197,20 @@ export const ClientIntakeWizard: React.FC = () => {
     reviewProblems.push({ step: 'stampDuty', message: 'Stamp duty: some questions have not been answered.' });
   }
 
-  /** Opens the person a field belongs to, then scrolls to and focuses the field. */
+  /** Opens the screen that holds a field (and the right person), then focuses the field. */
   const focusField = (fieldId: string | undefined) => {
     if (!fieldId) return;
-    const owner = formData.parties.findIndex(p => fieldId.startsWith(`${p.id}-`));
-    if (step === 'people' && owner !== -1) setPartyIndex(owner);
-    // Wait for the panel and error messages to render before moving focus
+    let owner = partyIndex;
+    if (step === 'people') {
+      const found = formData.parties.findIndex(p => fieldId.startsWith(`${p.id}-`));
+      if (found !== -1) owner = found;
+    }
+    const target = screensFor(step, formData, owner).find(s => s.owns(fieldId));
+    if (target) {
+      setPartyIndex(owner);
+      setScreenId(target.id);
+    }
+    // Wait for the screen and error messages to render before moving focus
     setTimeout(() => {
       const el = document.getElementById(fieldId);
       el?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -213,11 +218,11 @@ export const ClientIntakeWizard: React.FC = () => {
     }, 60);
   };
 
-  /** A filled-in field the client leaves is validated straight away (empty fields wait for "Continue"). */
+  /** A field is checked as soon as the client leaves it: a required field left empty shows its message straight away. */
   const handleBlurCapture = (e: React.FocusEvent<HTMLElement>) => {
     const target = e.target as HTMLInputElement;
-    if (!target.id || !('value' in target) || target.type === 'checkbox' || target.type === 'radio') return;
-    if (!String(target.value).trim()) return;
+    if (!target.id || !['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
+    if (['checkbox', 'radio', 'file'].includes(target.type)) return;
     if (touched.has(target.id)) return;
     setTouched(prev => new Set(prev).add(target.id));
   };
@@ -235,48 +240,26 @@ export const ClientIntakeWizard: React.FC = () => {
     });
   };
 
-  /** Opens one person's panel (-1 closes them all). Errors already shown stay visible. */
-  const selectParty = (index: number) => setPartyIndex(index);
-
-  const addParty = () => {
-    if (formData.parties.length >= MAX_PARTIES) return;
-    saveSoon();
-    const newIndex = formData.parties.length;
-    setFormData(prev => {
-      const parties = [...prev.parties, createParty()];
-      return { ...prev, parties, partyCount: parties.length };
-    });
-    selectParty(newIndex);
-  };
-
-  const setPartyCount = (count: number) => {
+  /** Sets buying/selling and the number of people (people past the new count are removed). */
+  const applySetup = (newRole: ConveyancingRole, count: number) => {
     const clamped = Math.max(1, Math.min(MAX_PARTIES, count));
     saveSoon();
     setFormData(prev => {
       let parties = [...prev.parties];
-      if (clamped > parties.length) {
-        while (parties.length < clamped) parties.push(createParty());
-      } else if (clamped < parties.length) {
-        parties = parties.slice(0, clamped);
-      }
-      // The first person has nobody "above" them to copy from
+      while (parties.length < clamped) parties.push(createParty());
+      if (parties.length > clamped) parties = parties.slice(0, clamped);
+      // The first person has nobody "above" them to copy an address from
       if (parties[0]?.sameAddressAsPrevious) parties[0] = { ...parties[0], sameAddressAsPrevious: false };
-      return { ...prev, parties, partyCount: parties.length };
+      return { ...prev, role: newRole, roleConfirmed: true, parties, partyCount: parties.length };
     });
-    if (partyIndex >= clamped) selectParty(clamped - 1);
   };
 
-  const removeParty = (index: number) => {
-    saveSoon();
-    setFormData(prev => {
-      const parties = prev.parties.filter((_, i) => i !== index);
-      // The first person has nobody "above" them to copy from
-      if (parties[0]?.sameAddressAsPrevious) parties[0] = { ...parties[0], sameAddressAsPrevious: false };
-      return { ...prev, parties, partyCount: parties.length };
-    });
-    if (partyIndex === -1) return;
-    const nextIndex = index < partyIndex ? partyIndex - 1 : Math.min(partyIndex, formData.parties.length - 2);
-    selectParty(Math.max(0, nextIndex));
+  const removalWarning = (count: number): string | null => {
+    if (count >= total) return null;
+    const lost = formData.parties.slice(count).filter(partyHasAnswers);
+    if (!lost.length) return null;
+    const names = lost.map(p => partyDisplayName(p) || `${role} ${formData.parties.indexOf(p) + 1}`).join(' and ');
+    return `Choosing ${count} ${count === 1 ? 'person' : 'people'} removes the details already entered for ${names}.`;
   };
 
   const addDocument = (partyId: string, doc: UploadedDocument) => {
@@ -298,47 +281,105 @@ export const ClientIntakeWizard: React.FC = () => {
   const onUploadingChange = (uploading: boolean) => setUploadsInFlight(n => Math.max(0, n + (uploading ? 1 : -1)));
 
   // ─── Navigation ────────────────────────────────────────────────────────────
-  const goToStep = (s: StepKey, pIndex = 0) => {
+  /** Opens a step at a given screen (default: its first screen). */
+  const goToStep = (s: StepKey, pIndex = 0, sId?: ScreenId) => {
     saveSoon();
     setRestoredNotice(false);
     setAttempted(a => ({ ...a, [s]: false }));
     setPartyIndex(pIndex);
-    stepChangedByUser.current = true;
+    setScreenId(sId ?? screensFor(s, formData, pIndex)[0]?.id ?? 'details');
+    pageChangedByUser.current = true;
     setStep(s);
   };
 
+  /** Moves to another screen within the current step. */
+  const goToScreen = (pIndex: number, sId: ScreenId) => {
+    saveSoon();
+    setRestoredNotice(false);
+    setAttempted(a => ({ ...a, [step]: false }));
+    setPartyIndex(pIndex);
+    setScreenId(sId);
+    pageChangedByUser.current = true;
+  };
+
+  const lastScreenOf = (s: StepKey, pIndex = 0): ScreenId => {
+    const list = screensFor(s, formData, pIndex);
+    return list[list.length - 1]?.id ?? 'details';
+  };
+
   const handleNext = () => {
-    const stepErrors = errorsForStep(step);
-    if (Object.keys(stepErrors).length) {
+    const pageKeys = Object.keys(pageErrors);
+    if (pageKeys.length) {
       setAttempted(a => ({ ...a, [step]: true }));
-      focusField(Object.keys(stepErrors)[0]);
+      focusField(pageKeys[0]);
       return;
     }
-
+    if (returnToReview && step !== 'review' && Object.keys(liveErrors).length === 0) {
+      setReturnToReview(false);
+      goToStep('review');
+      return;
+    }
+    if (screenIndex < screens.length - 1) {
+      goToScreen(partyIndex, screens[screenIndex + 1].id);
+      return;
+    }
+    if (step === 'people' && partyIndex < total - 1) {
+      goToScreen(partyIndex + 1, 'details');
+      return;
+    }
     if (returnToReview) {
       setReturnToReview(false);
       goToStep('review');
       return;
     }
-    goToStep(steps[Math.min(steps.length - 1, stepIndex + 1)]);
+    const next = formSteps[formSteps.indexOf(step) + 1];
+    if (next) goToStep(next);
   };
 
   const handleBack = () => {
-    const prev = steps[Math.max(0, stepIndex - 1)];
-    goToStep(prev);
+    if (screenIndex > 0) {
+      goToScreen(partyIndex, screens[screenIndex - 1].id);
+      return;
+    }
+    if (step === 'people') {
+      if (partyIndex > 0) goToScreen(partyIndex - 1, lastScreenOf('people', partyIndex - 1));
+      else openSetup();
+      return;
+    }
+    const prev = formSteps[formSteps.indexOf(step) - 1];
+    if (prev === 'people') goToStep('people', total - 1, lastScreenOf('people', total - 1));
+    else if (prev) goToStep(prev, 0, lastScreenOf(prev));
   };
 
-  const handleSelectRole = (selected: ConveyancingRole, advance = true) => {
-    setFormData(prev => ({ ...prev, role: selected, roleConfirmed: true }));
-    if (!advance) return; // arrow keys only select; "Continue" moves on
-    setRestoredNotice(false);
+  /** Opens the first screen to change buying/selling or the number of people. */
+  const openSetup = () => {
+    stepBeforeSetupRef.current = step === 'start' ? null : step;
     setReturnToReview(false);
-    goToStep(returnToReview ? 'review' : 'people');
+    goToStep('start');
   };
 
+  const handleSetupContinue = (newRole: ConveyancingRole, count: number) => {
+    const changed = !formData.roleConfirmed || newRole !== role || count !== total;
+    applySetup(newRole, count);
+    const back = stepBeforeSetupRef.current;
+    stepBeforeSetupRef.current = null;
+    if (!changed && back) goToStep(back);
+    else goToStep('people', 0, 'details');
+  };
+
+  const handleSetupCancel = () => {
+    const back = stepBeforeSetupRef.current || 'people';
+    stepBeforeSetupRef.current = null;
+    goToStep(back);
+  };
+
+  /** "Change" on the review: opens the first screen of that section that needs attention. */
   const handleEditFromReview = (s: StepKey, pIndex = 0) => {
+    const problemKeys = Object.keys(errorsForStep(s));
+    const list = screensFor(s, formData, pIndex);
+    const target = list.find(sc => problemKeys.some(k => sc.owns(k))) ?? list[0];
     setReturnToReview(true);
-    goToStep(s, pIndex);
+    goToStep(s, pIndex, target?.id);
   };
 
   const handleBackToReview = () => {
@@ -354,6 +395,7 @@ export const ClientIntakeWizard: React.FC = () => {
     setFormData(createInitialFormData());
     setStep('start');
     setPartyIndex(0);
+    setScreenId('details');
     setAttempted({});
     setTouched(new Set());
     setReturnToReview(false);
@@ -432,81 +474,110 @@ export const ClientIntakeWizard: React.FC = () => {
   };
 
   const saveState = saveStateFor(sync.status, sync.lastSavedAt, uploadsInFlight > 0, formData.roleConfirmed);
+  const saveStatus = <SaveStatus state={saveState} lastSavedAt={sync.lastSavedAt} />;
 
   // ─── Render ────────────────────────────────────────────────────────────────
   if (submission) {
     return (
-      <div className="rk-form">
-        <FormHeader saveState="none" lastSavedAt={null} />
-        <div className="rk-shell">
-          <Stepper steps={steps.map(s => stepTitle(s, role))} current={steps.length} allDone />
-          <SubmissionSuccess response={submission.response} formData={submission.formData} onStartAnother={handleStartAnother} />
-        </div>
+      <div className="rk-form-page">
+        <SubmissionSuccess response={submission.response} formData={submission.formData} onStartAnother={handleStartAnother} />
       </div>
     );
   }
 
-  const heading = STEP_HEADINGS[step](role);
-  let primaryLabel = 'Continue';
-  if (isLastStep) primaryLabel = isSubmitting ? 'Sending…' : 'Submit';
-  else if (returnToReview) primaryLabel = 'Save and go back';
+  if (step === 'start' || !screen) {
+    return (
+      <div className="rk-form-page rk-is-setup">
+        <SetupStep
+          role={formData.roleConfirmed ? role : null}
+          count={total}
+          editing={formData.roleConfirmed}
+          returningUserName={returningUser}
+          removalWarning={removalWarning}
+          onContinue={handleSetupContinue}
+          onCancel={handleSetupCancel}
+          status={saveStatus}
+        />
+      </div>
+    );
+  }
+
+  // Progress across every screen of the form, so the bar moves on each "Continue"
+  const everyScreen = allScreens(formSteps, formData);
+  const position = everyScreen.findIndex(s => s.step === step && s.partyIndex === partyIndex && s.id === screen.id);
+  const progress = everyScreen.length ? (Math.max(0, position) + 1) / everyScreen.length : 0;
+
+  let primaryLabel: string;
+  const nextScreen = screens[screenIndex + 1];
+  if (isFinalScreen) primaryLabel = isSubmitting ? 'Sending…' : 'Send my form';
+  else if (returnToReview && Object.keys(liveErrors).length === 0) primaryLabel = 'Save and return to review';
+  else if (nextScreen) primaryLabel = `Continue to ${nextScreen.short}`;
+  else if (step === 'people' && partyIndex < total - 1) primaryLabel = `Continue to ${roleLower} ${partyIndex + 2}`;
+  else if (returnToReview) primaryLabel = 'Continue to review';
+  else primaryLabel = `Continue to ${NEXT_STEP_LABEL[formSteps[formSteps.indexOf(step) + 1]] ?? 'review'}`;
+
+  const kicker = step === 'people' ? `${role} ${partyIndex + 1} of ${total}` : null;
 
   return (
-    <div className="rk-form">
-      <FormHeader saveState={saveState} lastSavedAt={sync.lastSavedAt} />
-      <div className="rk-shell">
-        <Stepper steps={steps.map(s => stepTitle(s, role))} current={stepIndex} />
+    <div className="rk-form-page">
+      <Stepper
+        steps={formSteps.map(s => stepTitle(s, role))}
+        current={Math.max(0, formSteps.indexOf(step))}
+        progress={progress}
+        aside={(
+          <div className="rk-matter-summary">
+            <span>
+              {role === 'Purchaser' ? 'Buying' : 'Selling'}
+              <span className="rk-summary-divider" aria-hidden="true">·</span>
+              <strong>{total} {roleLower}{total > 1 ? 's' : ''}</strong>
+            </span>
+            <button type="button" onClick={openSetup} aria-label="Change buying or selling and number of people">Change</button>
+          </div>
+        )}
+      />
 
-        <div className="rk-step-body" key={step} onBlurCapture={handleBlurCapture}>
-          <div className="rk-intro">
-            <h1 className="rk-title" tabIndex={-1} ref={headingRef}>{heading.title}</h1>
-            {heading.lead && <p className="rk-lead">{heading.lead}</p>}
+      <FieldProblemsContext.Provider value={liveErrors}>
+        <section
+          className="rk-screen"
+          key={`${step}-${partyIndex}-${screen.id}`}
+          aria-labelledby="rk-screen-title"
+          onBlurCapture={handleBlurCapture}
+        >
+          <div className="rk-screen-head">
+            {kicker && <p className="rk-screen-kicker">{kicker}</p>}
+            <h1 id="rk-screen-title" tabIndex={-1} ref={headingRef}>{screen.title}</h1>
           </div>
 
           {restoredNotice && (
-            <Notice tone="info" role="status" className="rk-restored">
+            <Notice role="status" className="rk-notice-compact">
               <p>Welcome back. We kept your answers.</p>
               {confirmStartOver ? (
-                <div className="rk-confirm-actions">
-                  <span>Clear this form and start again?</span>
-                  <button type="button" className="rk-btn rk-btn-danger rk-btn-small" onClick={handleStartOver}>Yes, start again</button>
-                  <button type="button" className="rk-btn rk-btn-secondary rk-btn-small" onClick={() => setConfirmStartOver(false)}>Cancel</button>
-                </div>
+                <span className="rk-confirm-actions">
+                  <button type="button" className="rk-btn-danger" onClick={handleStartOver}>Clear and start again</button>
+                  <button type="button" className="rk-link-button" onClick={() => setConfirmStartOver(false)}>Cancel</button>
+                </span>
               ) : (
                 <button type="button" className="rk-link-button" onClick={() => setConfirmStartOver(true)}>Start a new form</button>
               )}
             </Notice>
           )}
 
-          {returnToReview && !isLastStep && (
-            <div className="rk-edit-banner" role="status">
-              <p>Editing an answer</p>
+          {returnToReview && step !== 'review' && (
+            <Notice role="status" className="rk-notice-compact">
+              <p>You are changing an answer.</p>
               <button type="button" className="rk-link-button" onClick={handleBackToReview}>Back to review</button>
-            </div>
+            </Notice>
           )}
 
-          {!isLastStep && <ErrorSummary errors={summaryErrors} onSelect={focusField} />}
-
-          {step === 'start' && (
-            <RoleSelector
-              selectedRole={formData.roleConfirmed ? role : null}
-              onSelectRole={handleSelectRole}
-              returningUserName={returningUser}
-              error={errors.role}
-            />
-          )}
+          {step !== 'review' && <ErrorSummary errors={summaryErrors} onSelect={focusField} />}
 
           {step === 'people' && (
             <PeopleStep
               formData={formData}
               partyIndex={partyIndex}
+              screen={screen.id as PersonScreen}
               errors={errors}
-              live={liveErrors}
-              onSelectParty={selectParty}
               onUpdateParty={updateParty}
-              onSetPartyCount={setPartyCount}
-              onAddParty={addParty}
-              onRemoveParty={removeParty}
               onAddDocument={addDocument}
               onRemoveDocument={removeDocument}
               onUploadingChange={onUploadingChange}
@@ -521,8 +592,8 @@ export const ClientIntakeWizard: React.FC = () => {
           {step === 'property' && (
             <PropertyStep
               formData={formData}
+              screen={screen.id as PropertyScreen}
               errors={errors}
-              live={liveErrors}
               onPropertyChange={(patch: Partial<PropertyFormData>) => setFormData(prev => ({ ...prev, property: { ...prev.property, ...patch } }))}
               onFinanceChange={(patch: Partial<FinanceFormData>) => setFormData(prev => ({ ...prev, finance: { ...prev.finance, ...patch } }))}
               onHowDidYouHearChange={(value: string) => setFormData(prev => ({ ...prev, howDidYouHear: value }))}
@@ -546,35 +617,32 @@ export const ClientIntakeWizard: React.FC = () => {
               formData={formData}
               problems={reviewProblems}
               errors={errors}
-              live={liveErrors}
               onDeclarationChange={(patch: Partial<DeclarationFormData>) => setFormData(prev => ({ ...prev, declaration: { ...prev.declaration, ...patch } }))}
               onEdit={handleEditFromReview}
               submitError={submitError}
             />
           )}
-        </div>
+        </section>
+      </FieldProblemsContext.Provider>
 
-        {/* Navigation */}
-        <div className="rk-nav">
-          {step !== 'start' ? (
-            <button type="button" className="rk-btn rk-btn-secondary" onClick={handleBack} disabled={isSubmitting}>
-              Back
-            </button>
-          ) : <span />}
-          <div className="rk-nav-right">
-            {uploadsInFlight > 0 && isLastStep && <span className="rk-nav-note">Waiting for an upload to finish…</span>}
-            <button
-              type="button"
-              className="rk-btn rk-btn-primary"
-              onClick={isLastStep ? handleSubmitIntake : handleNext}
-              disabled={isSubmitting || (isLastStep && uploadsInFlight > 0)}
-              aria-busy={isSubmitting || undefined}
-            >
-              {isSubmitting && <span className="rk-spinner rk-spinner-light" aria-hidden="true" />}
-              {primaryLabel}
-            </button>
-          </div>
-        </div>
+      <div className="rk-actions">
+        <button type="button" className="rk-back" onClick={handleBack} disabled={isSubmitting}>
+          <span className="rk-arrow" aria-hidden="true">‹</span>Back
+        </button>
+        <div className="rk-actions-status">{saveStatus}</div>
+        <button
+          type="button"
+          className="rk-primary"
+          onClick={isFinalScreen ? handleSubmitIntake : handleNext}
+          disabled={isSubmitting || (isFinalScreen && uploadsInFlight > 0)}
+          aria-busy={isSubmitting || undefined}
+        >
+          {isSubmitting && <span className="rk-spinner" aria-hidden="true" />}
+          {primaryLabel.startsWith('Continue to ')
+            ? <>Continue<span className="rk-label-extra"> {primaryLabel.slice('Continue '.length)}</span></>
+            : primaryLabel}
+          {!isSubmitting && <span className="rk-arrow" aria-hidden="true">›</span>}
+        </button>
       </div>
     </div>
   );

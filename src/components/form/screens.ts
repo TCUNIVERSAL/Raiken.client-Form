@@ -1,18 +1,21 @@
 import { ClientIntakeFormData } from '../../types/index.js';
+import { stampDutyVisibility } from '../../utils/validation.js';
 import { StepKey } from './formState.js';
 
 /*
  * The pages of each step, grouped as in the approved design preview:
  * each person has two pages (personal details, then address and identity);
- * the property step has two (the property, then mortgage and payment);
- * stamp duty and review are one page each.
+ * the property step has two for buyers (the property, then the mortgage and broker) and one for sellers;
+ * stamp duty has one, plus an eligibility page for clients whose answers lead to the criteria;
+ * review is one page.
  * A page knows which fields (error keys / element ids) belong to it, so validation,
  * "Continue" and "go to the problem" work one page at a time.
  */
 
 export type PersonScreen = 'details' | 'address';
 export type PropertyScreen = 'property' | 'finance';
-export type ScreenId = PersonScreen | PropertyScreen | 'stampDuty' | 'review';
+export type StampDutyScreen = 'stampDuty' | 'eligibility';
+export type ScreenId = PersonScreen | PropertyScreen | StampDutyScreen | 'review';
 
 export interface Screen {
   id: ScreenId;
@@ -35,21 +38,29 @@ export function personScreens(partyId: string): Screen[] {
 }
 
 function propertyScreens(data: ClientIntakeFormData): Screen[] {
-  const isPurchaser = data.role === 'Purchaser';
+  // Sellers have no broker questions, so their mortgage question sits on the property page
+  if (data.role === 'Vendor') {
+    return [{ id: 'property', title: 'Property details', short: 'property', owns: k => k.startsWith('property-') || k.startsWith('finance-') }];
+  }
   return [
     { id: 'property', title: 'Property details', short: 'property', owns: k => k.startsWith('property-') },
-    {
-      id: 'finance',
-      title: isPurchaser ? 'Mortgage and payment' : 'Mortgage',
-      short: isPurchaser ? 'mortgage and payment' : 'mortgage',
-      owns: k => k.startsWith('finance-') || k === 'howDidYouHear'
-    }
+    { id: 'finance', title: 'Mortgage', short: 'mortgage', owns: k => k.startsWith('finance-') || k === 'howDidYouHear' }
   ];
 }
 
-const STAMP_DUTY_SCREEN: Screen = {
-  id: 'stampDuty', title: 'Stamp duty relief', short: 'stamp duty', owns: k => k.startsWith('stampDuty-')
-};
+/** The eligibility criteria are long, so they get their own page (only for clients whose answers lead there). */
+const ELIGIBILITY_FIELDS = ['stampDuty-meetsEligibilityCriteria'];
+
+function stampDutyScreens(data: ClientIntakeFormData): Screen[] {
+  const show = stampDutyVisibility(data.stampDuty);
+  const screens: Screen[] = [
+    { id: 'stampDuty', title: 'Stamp duty relief', short: 'stamp duty', owns: k => k.startsWith('stampDuty-') && !ELIGIBILITY_FIELDS.includes(k) }
+  ];
+  if (show.criteria) {
+    screens.push({ id: 'eligibility', title: 'Eligibility criteria', short: 'eligibility', owns: k => ELIGIBILITY_FIELDS.includes(k) });
+  }
+  return screens;
+}
 const REVIEW_SCREEN: Screen = {
   id: 'review', title: 'Review your details', short: 'review', owns: k => k.startsWith('declaration-')
 };
@@ -62,7 +73,7 @@ export function screensFor(step: StepKey, data: ClientIntakeFormData, partyIndex
       return personScreens(party.id);
     }
     case 'property': return propertyScreens(data);
-    case 'stampDuty': return [STAMP_DUTY_SCREEN];
+    case 'stampDuty': return stampDutyScreens(data);
     case 'review': return [REVIEW_SCREEN];
     default: return [];
   }

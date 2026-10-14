@@ -183,20 +183,12 @@ export function validateProperty(data: ClientIntakeFormData): FieldErrors {
 
   if (isPurchaser) {
     set(e, 'property.intendedUse', choose(property.intendedUse, 'Please choose what the property is for.'));
-    set(e, 'property.ownershipType', choose(property.ownershipType, 'Please choose how you would like to own the property.'));
   }
 
   set(e, 'finance.mortgageRequired', choose(finance.mortgageRequired, isPurchaser ? 'Please answer: are you taking a mortgage?' : 'Please answer: is there a mortgage on the property?'));
   if (isPurchaser) {
     set(e, 'finance.brokerPhone', checkPhone(finance.brokerPhone, '+61', false));
     set(e, 'finance.brokerEmail', checkEmail(finance.brokerEmail, false));
-  }
-  if (isPurchaser) {
-    const anyMethod = finance.paysByElectronicTransfer || finance.paysByCash || finance.paysByVirtualAssets || finance.paysByOther;
-    if (!anyMethod) e['finance.paysByElectronicTransfer'] = 'Please choose at least one way you will pay.';
-    if (finance.paysByCash) set(e, 'finance.cashAmount', checkMoney(finance.cashAmount, true, 'Please enter how much will be paid in cash.'));
-    if (finance.paysByVirtualAssets) set(e, 'finance.virtualAssetsAmount', checkMoney(finance.virtualAssetsAmount, true, 'Please enter how much will be paid in cryptocurrency.'));
-    if (finance.paysByOther) set(e, 'finance.otherPaymentDetails', finance.otherPaymentDetails?.trim() ? null : 'Please describe the other way you will pay.');
   }
   if (!isPurchaser && finance.mortgageRequired === 'Yes') {
     set(e, 'finance.lenderName', finance.lenderName.trim() ? null : 'Please enter the bank name.');

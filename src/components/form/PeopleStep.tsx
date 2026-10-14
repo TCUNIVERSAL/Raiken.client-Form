@@ -2,7 +2,7 @@ import React from 'react';
 import { ClientIntakeFormData, PartyFormData, UploadedDocument } from '../../types/index.js';
 import { DOB_MIN, dobMax } from '../../utils/validation.js';
 import { Address, formatAddress, pickAddress } from './formState.js';
-import { CheckboxCard, DateField, SelectField, TextField } from './fields.js';
+import { DateField, SelectField, TextField } from './fields.js';
 import { PhoneField } from './PhoneField.js';
 import { FileUpload } from './FileUpload.js';
 import { AddressFields } from './AddressFields.js';
@@ -54,7 +54,7 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
           value={party.firstName} error={errors[id('firstName')]} onChange={update('firstName')} />
         <TextField id={id('middleName')} label="Middle name" autoComplete={index === 0 ? 'additional-name' : 'off'}
           value={party.middleName} onChange={update('middleName')} />
-        <TextField id={id('lastName')} label="Last name" required autoComplete={index === 0 ? 'family-name' : 'off'}
+        <TextField id={id('lastName')} label="Last name" required wide autoComplete={index === 0 ? 'family-name' : 'off'}
           value={party.lastName} error={errors[id('lastName')]} onChange={update('lastName')} />
         <DateField
           id={id('dob')}
@@ -79,7 +79,7 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
           onPhoneChange={update('mobile')}
           error={errors[id('mobile')]}
         />
-        <TextField id={id('email')} type="email" inputMode="email" label="Email address" required
+        <TextField id={id('email')} type="email" inputMode="email" label="Email address" required wide
           hint="LiveSign sends the identity check link here."
           autoComplete={index === 0 ? 'email' : 'off'}
           value={party.email} error={errors[id('email')]} onChange={update('email')} />
@@ -87,25 +87,38 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
     );
   }
 
+  // People after the first can copy the address above (shown on the address label's line)
+  const sameAddress = previous && (
+    <label className="rk-inline-check" htmlFor={id('addr-same')}>
+      <input
+        id={id('addr-same')}
+        type="checkbox"
+        checked={party.sameAddressAsPrevious}
+        onChange={e => onSameAsAbove(index, e.target.checked)}
+      />
+      Same address as {previousName}
+    </label>
+  );
+
   return (
     <>
-      {previous && (
-        <div className="rk-choice-row rk-same-address">
-          <CheckboxCard id={id('addr-same')} checked={party.sameAddressAsPrevious} onChange={checked => onSameAsAbove(index, checked)}>
-            Same address as {previousName}
-          </CheckboxCard>
-        </div>
-      )}
       <div className="rk-fields">
         {previous && party.sameAddressAsPrevious ? (
-          <p className="rk-readonly-address" aria-live="polite">
-            {formatAddress(pickAddress(party)) || `Enter ${previousName}’s address first and it will be copied here.`}
-          </p>
+          <div className="rk-field rk-wide">
+            <div className="rk-field-top">
+              <p className="rk-field-label">Current address</p>
+              <span className="rk-field-aside">{sameAddress}</span>
+            </div>
+            <p className="rk-readonly-address" aria-live="polite">
+              {formatAddress(pickAddress(party)) || `Enter ${previousName}’s address first and it will be copied here.`}
+            </p>
+          </div>
         ) : (
           <AddressFields
             idPrefix={id('addr')}
             address={pickAddress(party)}
             errors={errors}
+            addressAside={sameAddress}
             onChange={patch => onAddressChange(index, patch)}
           />
         )}

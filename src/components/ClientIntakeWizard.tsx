@@ -14,12 +14,12 @@ import {
   Address, applyAddressChange, applySameAsAbove, collectDocuments, createInitialFormData, createParty,
   MAX_PARTIES, partyHasAnswers, StepKey, stepFromNumber, stepsFor, stepTitle, stepToNumber
 } from './form/formState.js';
-import { ErrorSummary, FieldProblemsContext, Notice, Stepper } from './form/fields.js';
+import { FieldProblemsContext, Notice, Stepper } from './form/fields.js';
 import { partyDisplayName, PeopleStep } from './form/PeopleStep.js';
 import { PropertyStep } from './form/PropertyStep.js';
 import { StampDutyStep } from './form/StampDutyStep.js';
 import { ReviewProblem, ReviewStep } from './form/ReviewStep.js';
-import { allScreens, PersonScreen, PropertyScreen, ScreenId, screensFor } from './form/screens.js';
+import { allScreens, PersonScreen, PropertyScreen, ScreenId, screensFor, StampDutyScreen } from './form/screens.js';
 import { useSessionSync } from './form/useSessionSync.js';
 import { SaveStatus, saveStateFor } from './form/SaveStatus.js';
 import '../form.css';
@@ -177,7 +177,7 @@ export const ClientIntakeWizard: React.FC = () => {
   Object.entries(pageErrors).forEach(([key, message]) => {
     if (attempted[step] || touched.has(key)) errors[key] = message;
   });
-  const summaryErrors: FieldErrors = attempted[step] ? pageErrors : {};
+  const shownErrorCount = attempted[step] ? Object.keys(pageErrors).length : 0;
 
   const reviewProblems: ReviewProblem[] = [];
   formData.parties.forEach((p, i) => {
@@ -413,7 +413,10 @@ export const ClientIntakeWizard: React.FC = () => {
       return;
     }
     if (Object.keys(declarationErrors).length) {
-      focusField(Object.keys(declarationErrors)[0]);
+      // Go to the first problem in page order: signature, name and date come before the declaration boxes
+      const pageOrder = ['declaration-signatureDataUrl', 'declaration-signedName', 'declaration-signedDate',
+        'declaration-coolingOffAcknowledged', 'declaration-authorityToAct'];
+      focusField(pageOrder.find(k => k in declarationErrors) ?? Object.keys(declarationErrors)[0]);
       return;
     }
     if (uploadsInFlight > 0) return;
@@ -428,14 +431,30 @@ export const ClientIntakeWizard: React.FC = () => {
     const telemetry = collectClientTelemetry({ name: fullName, phone: primary.mobile, email: primary.email });
     const blank = createInitialFormData();
     const isVendor = formData.role === 'Vendor';
+    // The form no longer asks how the property will be paid for, how it will be owned or for stamp duty notes:
+    // never send answers left in an older saved draft
+    const finance = {
+      ...formData.finance,
+      paysByElectronicTransfer: blank.finance.paysByElectronicTransfer,
+      paysByCash: blank.finance.paysByCash,
+      cashAmount: blank.finance.cashAmount,
+      paysByVirtualAssets: blank.finance.paysByVirtualAssets,
+      virtualAssetsAmount: blank.finance.virtualAssetsAmount,
+      paysByOther: blank.finance.paysByOther,
+      otherPaymentDetails: blank.finance.otherPaymentDetails,
+      sourceOfFundsDocuments: []
+    };
     const payload: ClientIntakeFormData = {
       ...formData,
+      property: { ...formData.property, ownershipType: '' },
+      finance,
+      stampDuty: { ...formData.stampDuty, notes: '' },
       // Drop purchaser-only answers left over if the client switched role part-way through
       ...(isVendor && {
         stampDuty: blank.stampDuty,
         howDidYouHear: '',
         property: { ...formData.property, intendedUse: '', ownershipType: '' },
-        finance: { ...formData.finance, brokerOrBankerName: '', brokerPhone: '', brokerEmail: '' },
+        finance: { ...finance, brokerOrBankerName: '', brokerPhone: '', brokerEmail: '' },
         declaration: { ...formData.declaration, coolingOffAcknowledged: false }
       }),
       partyCount: formData.parties.length,
@@ -569,7 +588,10 @@ export const ClientIntakeWizard: React.FC = () => {
             </Notice>
           )}
 
-          {step !== 'review' && <ErrorSummary errors={summaryErrors} onSelect={focusField} />}
+          {/* Announced to screen readers; on screen the red fields and their messages show what to fix */}
+          <p className="rk-sr-only" role="alert">
+            {shownErrorCount > 0 ? `Please check the ${shownErrorCount === 1 ? 'answer' : `${shownErrorCount} answers`} marked in red.` : ''}
+          </p>
 
           {step === 'people' && (
             <PeopleStep
@@ -597,13 +619,13 @@ export const ClientIntakeWizard: React.FC = () => {
               onPropertyChange={(patch: Partial<PropertyFormData>) => setFormData(prev => ({ ...prev, property: { ...prev.property, ...patch } }))}
               onFinanceChange={(patch: Partial<FinanceFormData>) => setFormData(prev => ({ ...prev, finance: { ...prev.finance, ...patch } }))}
               onHowDidYouHearChange={(value: string) => setFormData(prev => ({ ...prev, howDidYouHear: value }))}
-              onUploadingChange={onUploadingChange}
             />
           )}
 
           {step === 'stampDuty' && (
             <StampDutyStep
               stampDuty={formData.stampDuty}
+              screen={screen.id as StampDutyScreen}
               errors={errors}
               onChange={(patch: Partial<StampDutyFormData>) => setFormData(prev => ({
                 ...prev,

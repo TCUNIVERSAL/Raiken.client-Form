@@ -84,7 +84,7 @@ describe('Property, mortgage and payment validation', () => {
     const f = createInitialFormData();
     f.parties = [validParty()];
     Object.assign(f.property, { addressLine1: '12 King William St', suburb: 'Adelaide', postcode: '5000', purchasePrice: '650000', intendedUse: 'To live in', ownershipType: 'Sole Owner' });
-    Object.assign(f.finance, { mortgageRequired: 'No', paysByElectronicTransfer: true });
+    Object.assign(f.finance, { mortgageRequired: 'No' });
     return f;
   };
 
@@ -92,25 +92,30 @@ describe('Property, mortgage and payment validation', () => {
     assert.deepEqual(validateProperty(form()), {});
   });
 
-  test('TC-VAL-12 purchasers must choose at least one payment method', () => {
+  test('TC-VAL-12 the payment-method question is no longer asked, so it is never required', () => {
     const f = form();
-    f.finance.paysByElectronicTransfer = false;
-    assert.ok(validateProperty(f)['finance.paysByElectronicTransfer']);
-  });
-
-  test('TC-VAL-13 cash / crypto amounts and "other" details are required when ticked', () => {
-    const f = form();
-    Object.assign(f.finance, { paysByCash: true, cashAmount: '', paysByVirtualAssets: true, virtualAssetsAmount: 'abc', paysByOther: true, otherPaymentDetails: '' });
+    Object.assign(f.finance, { paysByElectronicTransfer: false, paysByCash: true, cashAmount: '' });
     const e = validateProperty(f);
-    assert.ok(e['finance.cashAmount'] && e['finance.virtualAssetsAmount'] && e['finance.otherPaymentDetails']);
+    assert.equal(e['finance.paysByElectronicTransfer'], undefined);
+    assert.equal(e['finance.cashAmount'], undefined);
   });
 
-  test('TC-VAL-14 ownership type is required for all purchasers', () => {
+  test('TC-VAL-13 a broker contact number, when given, must be a valid phone number', () => {
+    const f = form();
+    f.finance.brokerPhone = '12';
+    assert.ok(validateProperty(f)['finance.brokerPhone']);
+    f.finance.brokerPhone = '0412345678';
+    assert.equal(validateProperty(f)['finance.brokerPhone'], undefined);
+  });
+
+  test('TC-VAL-14 ownership type is no longer asked, so it is never required; broker email is checked when given', () => {
     const f = form();
     f.property.ownershipType = '';
-    assert.ok(validateProperty(f)['property.ownershipType'], 'ownership required even for single purchaser');
-    f.property.ownershipType = 'Joint Tenants';
     assert.equal(validateProperty(f)['property.ownershipType'], undefined);
+    f.finance.brokerEmail = 'not-an-email';
+    assert.ok(validateProperty(f)['finance.brokerEmail']);
+    f.finance.brokerEmail = 'broker@example.com';
+    assert.equal(validateProperty(f)['finance.brokerEmail'], undefined);
   });
 
   test('TC-VAL-15 settlement date cannot be in the past', () => {

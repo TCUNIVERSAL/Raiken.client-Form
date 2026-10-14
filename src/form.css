@@ -25,6 +25,7 @@
   --rk-choice-border: #008fc7;
   --rk-choice-bg: #eefaff;
   --rk-accent: #00a7d8;
+  --rk-control: #008db5;             /* radio dots and ticks, as on the start page */
   --rk-focus: #338df4;
   --rk-progress: #08b8e9;
   --rk-track: #e3e8ed;
@@ -113,7 +114,7 @@ body {
 .rk-main { display: flex; flex-direction: column; }
 .rk-form-page {
   flex: 1; display: flex; flex-direction: column;
-  width: 100%; max-width: 720px; margin: 0 auto; padding: 12px 20px 0; scroll-margin-top: 12px;
+  width: 100%; max-width: 880px; margin: 0 auto; padding: 12px 20px 0; scroll-margin-top: 12px;
 }
 
 .rk-form-meta {
@@ -140,17 +141,25 @@ body {
 .rk-screen { animation: rk-enter 200ms ease-out; }
 @keyframes rk-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-.rk-screen-head { margin-bottom: 16px; }
-.rk-screen-kicker { color: var(--rk-muted-2); font-size: 13px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 2px !important; }
+/* "Purchaser 1 of 2" shares the heading's line */
+.rk-screen-head { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+.rk-screen-kicker { color: var(--rk-muted-2); font-size: 14px; font-weight: 600; letter-spacing: 0.02em; margin: 0 !important; }
 .rk-screen-head h1, .rk-setup-question h1 {
   font-size: 27px; line-height: 1.2; letter-spacing: -0.02em; color: var(--rk-heading); font-weight: 700;
 }
 .rk-screen-head h1:focus, .rk-setup-question h1:focus { outline: none; }
-.rk-section-note { color: var(--rk-muted); font-size: 14px; line-height: 1.45; margin: -6px 0 14px !important; max-width: 640px; }
+.rk-section-note { color: var(--rk-muted); font-size: 14px; line-height: 1.45; margin: -6px 0 14px !important; }
 
-/* One column, so the eye moves straight down the form (Designlab #7) */
-.rk-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 640px; }
+/* Two columns as in the design preview (one column on phones); long answers span both */
+.rk-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
 .rk-field { min-width: 0; }
+.rk-fields > .rk-wide, .rk-fields > .rk-signature { grid-column: 1 / -1; }
+.rk-field-aside { margin-left: auto; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; }
+.rk-field-top > .rk-field-label { margin-bottom: 0; }
+.rk-inline-check { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; font-size: 14px; font-weight: 600; color: var(--rk-text-body); cursor: pointer; }
+.rk-inline-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--rk-control); }
+.rk-inline-check:focus-within { outline: 3px solid var(--rk-focus); outline-offset: 2px; }
+.rk-field-aside .rk-link-button { min-height: 24px; font-size: 14px; }
 .rk-fields + .rk-fields, .rk-fields + .rk-field, .rk-field + .rk-fields, .rk-choice-set + .rk-fields { margin-top: 16px; }
 
 .rk-field-top > label,
@@ -258,19 +267,28 @@ input.rk-input[type='date'] { cursor: pointer; }
 /* address extras: "Same address as …" is a plain checkbox row to keep the screen short */
 .rk-same-address { margin-bottom: 10px; }
 .rk-same-address .rk-choice { min-height: 36px; padding: 4px 2px; border: 0; background: none; box-shadow: none; font-weight: 600; }
-.rk-address-links { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: -6px; }
 .rk-readonly-address {
   margin: 0; padding: 13px 15px; border: 1px dashed #b9c7d8; border-radius: 7px;
   background: #f7fafd; color: var(--rk-text-body); font-size: 16px;
 }
-.rk-criteria { margin: 2px 0 8px; padding-left: 20px; color: var(--rk-text-body); font-size: 14px; line-height: 1.45; }
-.rk-criteria li { margin: 3px 0; }
-.rk-notice-spaced { margin-top: 0; }
-.rk-after-sign { margin-top: 12px; max-width: 640px; }
+.rk-criteria { margin: 2px 0 8px; padding-left: 20px; color: var(--rk-text-body); font-size: 13.5px; line-height: 1.4; columns: 2; column-gap: 32px; }
+.rk-criteria li { break-inside: avoid; margin: 0 0 4px; }
+
+/* ─── Stamp duty: two questions per row ─────────────────────────────────── */
+.rk-question-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
+.rk-question-grid .rk-choice-set legend { font-size: 15px; }
+.rk-question-grid > .rk-choice-set { margin: 0; }
+.rk-question-grid > .rk-wide { grid-column: 1 / -1; }
+.rk-question-grid > .rk-notice { margin: 0; }
+/* The four property types share one row; the long one wraps inside its box */
+#stampDuty-propertyType .rk-choice-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#stampDuty-propertyType .rk-choice { line-height: 1.3; }
 
 /* ─── Property page groups ───────────────────────────────────────────────── */
-.rk-subsection { max-width: 640px; border-top: 1px solid var(--rk-line); margin-top: 24px; padding-top: 20px; }
+.rk-subsection { border-top: 1px solid var(--rk-line); margin-top: 24px; padding-top: 20px; }
 .rk-conditional-spaced { margin-top: 14px; }
+.rk-fields-spaced { margin-top: 16px; }
+.rk-group-title { font-size: 16px; font-weight: 600; color: var(--rk-text-strong); margin-bottom: 10px; }
 .rk-conditional-spaced > .rk-fields + .rk-notice { margin-top: 14px; }
 
 /* ─── Choices (radio / checkbox boxes) ───────────────────────────────────── */
@@ -280,9 +298,8 @@ input.rk-input[type='date'] { cursor: pointer; }
 .rk-choice-set legend { font-size: 16px; font-weight: 600; color: var(--rk-text-strong); margin-bottom: 8px; padding: 0; }
 .rk-choice-set legend + .rk-hint, .rk-choice-set legend + .rk-error { margin: -3px 0 6px; }
 
-/* Answers listed vertically, one per line (Designlab #9) */
-.rk-choice-row { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
-.rk-choice-row .rk-choice { width: 100%; }
+/* Answers side by side in a row, as in the design preview (stacked on phones) */
+.rk-choice-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
 .rk-choice {
   min-height: 46px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 10px;
@@ -291,21 +308,12 @@ input.rk-input[type='date'] { cursor: pointer; }
 }
 .rk-choice:hover { border-color: var(--rk-choice-border); background: #f6fcff; }
 .rk-choice-selected { border-color: var(--rk-choice-border); background: var(--rk-choice-bg); box-shadow: inset 0 0 0 1px var(--rk-choice-border); }
-.rk-choice input { width: 19px; height: 19px; margin: 0; flex: none; accent-color: var(--rk-accent); }
+.rk-choice input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--rk-control); }
 .rk-choice:focus-within { outline: 3px solid var(--rk-focus); outline-offset: 2px; }
 .rk-has-error .rk-choice { border-color: var(--rk-error); }
 
-.rk-conditional { border-left: 3px solid #c5e8f5; padding-left: 18px; margin: 0; max-width: 640px; }
+.rk-conditional { border-left: 3px solid #c5e8f5; padding-left: 18px; margin: 0; }
 .rk-conditional > .rk-fields { margin-bottom: 0; }
-
-/* settlement shortcuts */
-.rk-quick-picks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.rk-quick-pick {
-  min-height: 34px; padding: 4px 14px; border-radius: 999px; font-size: 14px; font-weight: 600;
-  color: var(--rk-link); background: #fff; border: 1px solid var(--rk-field-border);
-}
-.rk-quick-pick:hover { border-color: var(--rk-choice-border); background: #f6fcff; }
-.rk-quick-pick[aria-pressed='true'] { background: var(--rk-choice-bg); border-color: var(--rk-choice-border); color: #00577c; }
 
 /* ─── Upload box ─────────────────────────────────────────────────────────── */
 .rk-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -329,7 +337,7 @@ input.rk-input[type='date'] { cursor: pointer; }
 /* ─── Notices and banners ────────────────────────────────────────────────── */
 .rk-error-summary {
   border: 2px solid var(--rk-error); background: var(--rk-error-bg); color: #7e211a;
-  border-radius: 7px; padding: 10px 14px; margin: 0 0 14px; font-size: 14px; max-width: 640px;
+  border-radius: 7px; padding: 10px 14px; margin: 0 0 14px; font-size: 14px;
 }
 .rk-error-summary:focus { outline: 3px solid var(--rk-focus); outline-offset: 2px; }
 .rk-error-summary > strong { display: block; }
@@ -340,7 +348,7 @@ input.rk-input[type='date'] { cursor: pointer; }
 .rk-error-compact { margin-top: 14px; }
 
 .rk-notice {
-  border-radius: 7px; padding: 10px 14px; margin: 0 0 14px; font-size: 14px; line-height: 1.45; max-width: 640px;
+  border-radius: 7px; padding: 10px 14px; margin: 0 0 14px; font-size: 14px; line-height: 1.45;
   background: #f1f9fe; border: 1px solid #c5e8f5; color: var(--rk-text-body);
 }
 .rk-notice-title { font-weight: 700; margin-bottom: 2px; color: var(--rk-text); }
@@ -402,7 +410,7 @@ input.rk-input[type='date'] { cursor: pointer; }
 /* ─── Start screens ──────────────────────────────────────────────────────── */
 .rk-setup-screen { flex: 1; display: flex; flex-direction: column; }
 .rk-setup-form { flex: 1; display: flex; flex-direction: column; }
-.rk-setup-question { border: 0; padding: 0; margin: 0; min-width: 0; max-width: 640px; }
+.rk-setup-question { border: 0; padding: 0; margin: 0; min-width: 0; }
 .rk-setup-question legend { padding: 0; margin-bottom: 10px; font-size: 18px; font-weight: 600; color: var(--rk-text); }
 .rk-people-question { border-top: 1px solid var(--rk-line); margin-top: 20px; padding-top: 18px; }
 
@@ -413,7 +421,7 @@ input.rk-input[type='date'] { cursor: pointer; }
   transition: background-color 0.15s, border-color 0.15s;
 }
 .rk-role-option { min-height: 70px; padding: 12px 18px; }
-.rk-role-option input, .rk-people-option input { height: 20px; width: 20px; margin: 0; flex-shrink: 0; accent-color: #008db5; }
+.rk-role-option input, .rk-people-option input { height: 20px; width: 20px; margin: 0; flex-shrink: 0; accent-color: var(--rk-control); }
 .rk-role-option strong { display: block; font-size: 18px; font-weight: 600; }
 .rk-role-option small { display: block; font-size: 14px; color: #58687d; margin-top: 2px; }
 .rk-role-option:hover, .rk-people-option:hover { border-color: #008db5; background: #f6fcff; }
@@ -444,22 +452,71 @@ input.rk-input[type='date'] { cursor: pointer; }
 .rk-welcome { font-weight: 600; color: var(--rk-text-body); margin: -6px 0 12px !important; }
 
 /* ─── Review ─────────────────────────────────────────────────────────────── */
-.rk-review-block { max-width: 640px; border-bottom: 1px solid var(--rk-line); padding: 14px 0; }
-.rk-review-incomplete { border-bottom-color: var(--rk-error); }
-.rk-review-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.rk-review-head h2 { font-size: 18px; }
-.rk-review-block .rk-incomplete { color: var(--rk-error-text); font-size: 13px; font-weight: 600; margin-left: 8px; }
-.rk-review-change {
-  min-height: 36px; padding: 0 4px; border: 0; background: none;
-  color: var(--rk-link); font-size: 15px; font-weight: 700; text-decoration: underline;
+/* Answer groups as cards, two per row: a one-line summary that opens to show every answer */
+.rk-review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; align-items: stretch; }
+.rk-review-card {
+  position: relative; min-width: 0; border: 1px solid var(--rk-line); border-radius: 8px; background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.rk-review-block p { color: var(--rk-muted-2); font-size: 15px; margin: 4px 0 0; }
-.rk-review-block p strong { color: var(--rk-text-body); }
+.rk-review-card:hover { border-color: var(--rk-choice-border); }
+.rk-review-card.rk-open { border-color: var(--rk-choice-border); box-shadow: inset 0 0 0 1px var(--rk-choice-border); background: var(--rk-choice-bg); }
+.rk-review-incomplete { border-color: var(--rk-error); }
+/* The whole card opens its answers; "Change" sits in the top-right corner */
+.rk-review-toggle {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 58px;
+  padding: 9px 12px 9px 32px; border: 0; background: none; text-align: left; color: inherit; position: relative;
+}
+.rk-review-toggle::before {
+  content: '›'; position: absolute; left: 12px; top: 7px; font-size: 22px; line-height: 24px; color: var(--rk-link);
+  transition: transform 0.15s;
+}
+.rk-review-toggle[aria-expanded='true']::before { transform: rotate(90deg); }
+.rk-review-toggle:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; border-radius: 8px; }
+.rk-review-title { font-weight: 700; font-size: 15px; color: var(--rk-text); padding-right: 60px; }
+.rk-review-summary { max-width: 100%; color: var(--rk-muted-2); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk-review-card .rk-incomplete { color: var(--rk-error-text); font-size: 12.5px; font-weight: 600; }
+.rk-review-change {
+  position: absolute; top: 6px; right: 8px; min-height: 30px; padding: 0 4px;
+  border: 0; background: none; color: var(--rk-link); font-size: 14px; font-weight: 700; text-decoration: underline;
+}
 
-.rk-declaration { max-width: 640px; margin: 22px 0; }
-.rk-declaration h2 { font-size: 18px; margin-bottom: 6px; }
-.rk-declaration label { display: flex; align-items: flex-start; gap: 12px; font-size: 16px; line-height: 1.5; padding: 8px 0; cursor: pointer; }
-.rk-declaration input { width: 21px; height: 21px; margin: 2px 0 0; flex: 0 0 auto; accent-color: #00a5d5; }
+/* Every answer of the open card, in a panel below the cards, as label / value pairs in two columns */
+.rk-review-panel { margin-top: 10px; padding: 12px 16px 14px; border: 1px solid var(--rk-choice-border); border-radius: 8px; background: #fff; }
+.rk-review-panel-head { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--rk-line); }
+.rk-review-panel-head h2 { font-size: 16px; margin-right: auto; }
+.rk-review-close {
+  width: 30px; height: 30px; border: 0; border-radius: 50%; background: #f1f4f7; color: var(--rk-muted-2);
+  font-size: 20px; line-height: 1; display: grid; place-items: center;
+}
+.rk-review-close:hover { background: #e3e8ed; }
+.rk-review-dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; }
+.rk-review-dl div { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.4; }
+.rk-review-dl dt { color: var(--rk-muted); }
+.rk-review-dl dd { margin: 0; color: var(--rk-text-body); font-weight: 600; overflow-wrap: anywhere; }
+.rk-not-entered { color: var(--rk-muted); font-weight: 400; font-style: italic; }
+
+/* Declaration beside the signature */
+.rk-sign-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; margin: 12px 0; }
+.rk-sign-side { display: grid; gap: 8px; }
+/* Below the signature: the declaration, with Raikan's details for the client's agent, broker or bank beside it */
+.rk-declare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; margin-top: 8px; }
+.rk-declare-grid .rk-declaration { margin: 0; }
+.rk-info-compact { padding: 10px 14px; }
+.rk-info-compact .rk-info-title { font-size: 14px; }
+.rk-info-compact .rk-info-list { gap: 2px; }
+.rk-info-compact .rk-info-list div { display: block; font-size: 13.5px; }
+.rk-info-compact .rk-info-list dt, .rk-info-compact .rk-info-list dd { display: inline; }
+.rk-info-compact .rk-info-list dd { margin-left: 5px; }
+.rk-info-compact .rk-info-list dt { color: var(--rk-text-strong); font-weight: 600; }
+.rk-info-compact .rk-info-list dt::after { content: ':'; }
+
+.rk-declaration { margin: 12px 0 0; }
+.rk-declaration-head { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; margin-bottom: 2px; }
+.rk-declaration h2 { font-size: 16px; }
+.rk-declaration-head .rk-error { margin: 0; font-size: 13.5px; }
+.rk-declaration label.rk-has-error input { outline: 2px solid var(--rk-error); outline-offset: 1px; }
+.rk-declaration label { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.45; padding: 6px 0; cursor: pointer; }
+.rk-declaration input { width: 20px; height: 20px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--rk-control); }
 .rk-declaration label:focus-within { outline: 3px solid var(--rk-focus); outline-offset: 2px; }
 .rk-declaration .rk-error { margin: 0 0 6px 33px; }
 .rk-declaration-detail { display: block; color: var(--rk-muted-2); font-size: 15px; }
@@ -496,10 +553,9 @@ input.rk-input[type='date'] { cursor: pointer; }
 .rk-next-steps h2 { font-size: 17px; margin-bottom: 6px; }
 .rk-next-steps ol { margin: 0; padding-left: 20px; color: var(--rk-text-body); line-height: 1.5; font-size: 14px; }
 .rk-info-box { margin: 0; text-align: left; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--rk-line); background: #fff; }
-.rk-info-title { font-weight: 700; font-size: 15px; cursor: pointer; color: var(--rk-text); }
-.rk-info-box[open] .rk-info-title { margin-bottom: 6px; }
+.rk-info-title { font-weight: 700; font-size: 15px; color: var(--rk-text); margin-bottom: 6px !important; }
 .rk-info-list { margin: 0; display: grid; gap: 4px; }
-.rk-info-list div { display: grid; grid-template-columns: 70px 1fr; gap: 10px; font-size: 14px; }
+.rk-info-list div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; font-size: 14px; }
 .rk-info-list dt { color: var(--rk-muted); }
 .rk-info-list dd { margin: 0; overflow-wrap: anywhere; }
 .rk-button-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
@@ -526,7 +582,12 @@ input.rk-input[type='date'] { cursor: pointer; }
   .rk-summary-divider { margin: 0 3px; }
   .rk-screen-head { margin-bottom: 12px; }
   .rk-screen-head h1, .rk-setup-question h1 { font-size: 22px; }
-  .rk-fields { gap: 14px; }
+  .rk-fields { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .rk-choice-row { flex-direction: column; gap: 8px; }
+  .rk-choice-row .rk-choice { width: 100%; }
+  .rk-review-grid, .rk-question-grid, .rk-sign-grid, .rk-declare-grid, .rk-review-dl, #stampDuty-propertyType .rk-choice-row { grid-template-columns: minmax(0, 1fr); }
+  .rk-review-dl div { grid-template-columns: 120px minmax(0, 1fr); }
+  .rk-criteria { columns: 1; }
   .rk-fields + .rk-fields, .rk-fields + .rk-field, .rk-field + .rk-fields, .rk-choice-set + .rk-fields { margin-top: 14px; }
   .rk-choice-set { margin-bottom: 14px; }
 
@@ -569,9 +630,8 @@ input.rk-input[type='date'] { cursor: pointer; }
   .rk-role-option { min-height: 60px; }
   .rk-actions { margin-top: 10px; padding: 6px 0 8px; }
   .rk-same-address { margin-bottom: 4px; }
-  .rk-address-links .rk-link-button { min-height: 28px; }
   .rk-primary { min-height: 46px; }
-  .rk-signature-pad, .rk-signature-preview { height: 104px; min-height: 104px; }
+  .rk-signature-pad, .rk-signature-preview { height: 96px; min-height: 96px; }
 }
 
 /* Very short windows (small phones such as iPhone SE): the most compact layout */
@@ -588,7 +648,6 @@ input.rk-input[type='date'] { cursor: pointer; }
   .rk-screen-kicker { font-size: 12px; margin: 0 !important; }
   .rk-same-address { margin-bottom: 2px; }
   .rk-same-address .rk-choice { min-height: 30px; padding-top: 2px; padding-bottom: 2px; }
-  .rk-address-links .rk-link-button { min-height: 26px; }
   .rk-field-top { column-gap: 8px; }
   .rk-screen-head h1, .rk-setup-question h1 { font-size: 20px; }
   .rk-section-note { font-size: 13px; margin-bottom: 8px !important; }
@@ -607,8 +666,6 @@ input.rk-input[type='date'] { cursor: pointer; }
   .rk-choice-set legend { margin-bottom: 5px; }
   .rk-role-option { min-height: 52px; }
   .rk-criteria { font-size: 13px; line-height: 1.35; }
-  .rk-quick-picks { margin-top: 5px; }
-  .rk-quick-pick { min-height: 30px; }
   .rk-actions { margin-top: 6px; padding: 4px 0; }
   .rk-primary { min-height: 44px; }
   .rk-back { min-height: 40px; }

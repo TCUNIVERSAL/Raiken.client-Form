@@ -61,17 +61,20 @@ interface BoxProps {
   wide?: boolean;
   /** The field has an answer (used for the tick). */
   filled?: boolean;
+  /** Shown at the end of the label line, such as a link that reveals another box. */
+  aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }
 
-export const InputBox: React.FC<BoxProps> = ({ id, label, required, hint, error, wide, filled = false, children, className }) => {
+export const InputBox: React.FC<BoxProps> = ({ id, label, required, hint, error, wide, filled = false, aside, children, className }) => {
   const valid = useFieldValid(id, filled, error);
   return (
     <div className={`rk-field${wide ? ' rk-wide' : ''}${error ? ' rk-has-error' : ''}${valid ? ' rk-valid' : ''}${className ? ` ${className}` : ''}`}>
       <div className="rk-field-top">
         <label htmlFor={id}><LabelText label={label} required={required} /></label>
         <ErrorText id={id} error={error} />
+        {aside && <span className="rk-field-aside">{aside}</span>}
       </div>
       {hint && !error && <p id={`${id}-hint`} className="rk-hint">{hint}</p>}
       {children}
@@ -94,12 +97,13 @@ interface TextFieldProps {
   maxLength?: number;
   wide?: boolean;
   className?: string;
+  aside?: React.ReactNode;
 }
 
 export const TextField: React.FC<TextFieldProps> = ({
-  id, label, value, onChange, placeholder, required, hint, error, type = 'text', inputMode, autoComplete, maxLength = 120, wide, className
+  id, label, value, onChange, placeholder, required, hint, error, type = 'text', inputMode, autoComplete, maxLength = 120, wide, className, aside
 }) => (
-  <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value.trim())} className={className}>
+  <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value.trim())} className={className} aside={aside}>
     <input
       id={id}
       type={type}
@@ -241,13 +245,15 @@ interface ChoiceCardsProps {
   required?: boolean;
   hint?: React.ReactNode;
   error?: string;
+  /** Spans both columns of a two-column grid. */
+  wide?: boolean;
 }
 
-export const ChoiceCards: React.FC<ChoiceCardsProps> = ({ id, label, value, onChange, options, required, hint, error }) => (
+export const ChoiceCards: React.FC<ChoiceCardsProps> = ({ id, label, value, onChange, options, required, hint, error, wide }) => (
   <fieldset
     id={id}
     tabIndex={-1}
-    className={`rk-choice-set${error ? ' rk-has-error' : ''}`}
+    className={`rk-choice-set${wide ? ' rk-wide' : ''}${error ? ' rk-has-error' : ''}`}
     aria-describedby={describedBy(id, hint, error)}
   >
     <legend><LabelText label={label} required={required} /></legend>

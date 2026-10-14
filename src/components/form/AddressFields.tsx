@@ -8,10 +8,12 @@ interface AddressFieldsProps {
   address: Address;
   errors: Record<string, string>;
   onChange: (patch: Partial<Address>) => void;
+  /** Shown on the address label's line, before "Live outside Australia?" */
+  addressAside?: React.ReactNode;
 }
 
-/** Address boxes for a person, rendered inside a `.rk-fields` column. */
-export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address, errors, onChange }) => {
+/** Address boxes for a person, rendered inside a two-column `.rk-fields` grid. */
+export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address, errors, onChange, addressAside }) => {
   const id = (key: string) => `${idPrefix}-${key}`;
   const isAustralia = address.country === 'Australia';
   // Most clients live in Australia, so the country question only appears when asked for
@@ -28,6 +30,7 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address,
           options={COUNTRIES.map(c => ({ value: c, label: c }))}
           value={address.country}
           error={errors[id('country')]}
+          wide
           // The state list differs by country, so reset it when the country changes
           onChange={v => onChange({ country: v, state: '' })}
         />
@@ -39,6 +42,16 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address,
         autoComplete="address-line1"
         value={address.addressLine1}
         error={errors[id('addressLine1')]}
+        aside={(addressAside || !showCountry) && (
+          <>
+            {addressAside}
+            {!showCountry && (
+              <button type="button" className="rk-link-button" onClick={() => setShowCountry(true)}>
+                Live outside Australia?
+              </button>
+            )}
+          </>
+        )}
         onChange={v => onChange({ addressLine1: v })}
       />
       <TextField
@@ -90,13 +103,6 @@ export const AddressFields: React.FC<AddressFieldsProps> = ({ idPrefix, address,
         error={errors[id('postcode')]}
         onChange={v => onChange({ postcode: v.replace(/\D/g, '').slice(0, 4) })}
       />
-      {!showCountry && (
-        <div className="rk-address-links">
-          <button type="button" className="rk-link-button" onClick={() => setShowCountry(true)}>
-            Live outside Australia?
-          </button>
-        </div>
-      )}
     </>
   );
 };

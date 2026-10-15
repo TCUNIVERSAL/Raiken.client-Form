@@ -76,7 +76,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
   const coolingError = errors['declaration-coolingOffAcknowledged'];
   const authorityError = errors['declaration-authorityToAct'];
   const declarationError = coolingError && authorityError ? 'Please tick both boxes.' : coolingError || authorityError;
-  const fullName = (p: PartyFormData) => [p.firstName, p.middleName, p.lastName].filter(x => x.trim()).join(' ');
+  const fullName = (p: PartyFormData) => {
+    if (p.isSingleName) return p.firstName.trim();
+    return [p.firstName, p.middleName, p.lastName].filter(x => x.trim()).join(' ');
+  };
 
   const sections: Section[] = [
     ...formData.parties.map((p, i): Section => ({
@@ -93,8 +96,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         ['Date of birth', formatDateLong(p.dob)],
         ['Residency status', p.residencyStatus],
         ['Occupation', p.occupation],
-        ['Current address', formatAddress(pickAddress(p))],
-        ['Identity documents', p.idDocuments.map(d => d.fileName).join(', ') || 'None uploaded']
+        ['Current address', formatAddress(pickAddress(p))]
       ]
     })),
     {
@@ -109,6 +111,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
         [isPurchaser ? 'Purchase price' : 'Sale price', money(property.purchasePrice)],
         ['Settlement date', formatDateLong(property.settlementDate) || 'Not known yet'],
         ...(isPurchaser ? [['This property is for', USE_LABELS[property.intendedUse] || property.intendedUse] as Row] : []),
+        ...(isPurchaser && property.ownershipType ? [['Type of ownership', property.ownershipType] as Row] : []),
         ['Mortgage', MORTGAGE_LABELS[finance.mortgageRequired] || ''],
         ...(isPurchaser
           ? ([

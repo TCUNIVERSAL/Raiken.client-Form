@@ -106,14 +106,16 @@ export function buildEnvelopePayload(intake: { matterReference: string; role: st
   };
 
   const customers = (intake.parties || []).map((p: any, i: number) => {
+    const isSingle = Boolean(p.isSingleName);
     const firstName = text(p.firstName);
-    const lastName = text(p.lastName);
+    const lastName = isSingle ? (text(p.lastName) || firstName) : text(p.lastName);
+    const orgName = isSingle ? firstName : `${firstName} ${lastName}`.trim();
     const rawPhone = p.phoneCountryCode ? `${text(p.phoneCountryCode)}${text(p.mobile)}` : text(p.mobile);
     const { countryCodeId, mobileNumber } = splitMobile(rawPhone, opts.countryCodes);
     return {
       index: i + 1,
       requiresPep: true,
-      organisationName: `${firstName} ${lastName}`.trim() || 'Individual',
+      organisationName: orgName || 'Individual',
       firstName,
       middleName: text(p.middleName) || undefined,
       lastName,

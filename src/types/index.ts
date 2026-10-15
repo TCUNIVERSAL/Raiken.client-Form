@@ -19,6 +19,8 @@ export interface UploadedDocument {
 
 export interface PartyFormData {
   id: string;
+  /** True when client has only one legal name (mononym). */
+  isSingleName?: boolean;
   firstName: string;
   middleName: string;
   lastName: string;
@@ -109,6 +111,8 @@ export interface ClientIntakeFormData {
   stampDuty: StampDutyFormData;
   declaration: DeclarationFormData;
   howDidYouHear: string;
+  /** 'Yes' if buying/selling under company or trust structure. */
+  isCompanyOrTrust?: YesNo;
   /** Flattened list of every uploaded document, filled in at submission time. */
   idDocuments: UploadedDocument[];
 }

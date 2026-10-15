@@ -230,6 +230,141 @@ export const DateField: React.FC<DateFieldProps> = ({ id, label, value, onChange
   </InputBox>
 );
 
+interface DateOfBirthFieldProps {
+  id: string;
+  label?: React.ReactNode;
+  value: string; // ISO "YYYY-MM-DD"
+  onChange: (value: string) => void;
+  required?: boolean;
+  hint?: React.ReactNode;
+  error?: string;
+  wide?: boolean;
+  className?: string;
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/**
+ * Three separate dropdowns (Day, Month, Year) for Date of Birth.
+ * Prevents non-IT / mobile users from struggling with calendar year-pickers.
+ */
+export const DateOfBirthField: React.FC<DateOfBirthFieldProps> = ({
+  id, label = 'Date of birth', value, onChange, required, hint, error, wide = true, className
+}) => {
+  const parts = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-') : ['', '', ''];
+  const [currentYear, currentMonth, currentDay] = parts;
+
+  const yearNum = parseInt(currentYear, 10);
+  const monthNum = parseInt(currentMonth, 10);
+  const maxDays = (yearNum && monthNum) ? new Date(yearNum, monthNum, 0).getDate() : 31;
+
+  const maxAdultYear = new Date().getFullYear() - 18;
+  const years: number[] = [];
+  for (let y = maxAdultYear; y >= 1920; y--) {
+    years.push(y);
+  }
+
+  const handlePartChange = (part: 'day' | 'month' | 'year', val: string) => {
+    let d = part === 'day' ? val : currentDay;
+    let m = part === 'month' ? val : currentMonth;
+    let y = part === 'year' ? val : currentYear;
+
+    if (m && y && d) {
+      const daysInM = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+      if (parseInt(d, 10) > daysInM) {
+        d = String(daysInM).padStart(2, '0');
+      }
+    }
+
+    if (d && m && y) {
+      onChange(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    } else {
+      onChange('');
+    }
+  };
+
+  const formattedPreview = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? (() => {
+    try {
+      const [y, m, d] = value.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return '';
+    }
+  })() : '';
+
+  return (
+    <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value)} className={className}>
+      <div className="rk-dob-container">
+        <div className="rk-dob-row" role="group" aria-labelledby={`${id}-label`}>
+          <div className="rk-dob-col rk-dob-day">
+            <label htmlFor={id} className="rk-dob-sublabel">Day</label>
+            <select
+              id={id}
+              className={`rk-input rk-dob-select${currentDay ? '' : ' rk-placeholder-shown'}`}
+              value={currentDay}
+              aria-required={required || undefined}
+              aria-invalid={Boolean(error)}
+              aria-describedby={describedBy(id, hint, error)}
+              onChange={e => handlePartChange('day', e.target.value)}
+            >
+              <option value="">Day</option>
+              {Array.from({ length: maxDays }, (_, i) => {
+                const dayStr = String(i + 1).padStart(2, '0');
+                return <option key={dayStr} value={dayStr}>{i + 1}</option>;
+              })}
+            </select>
+          </div>
+
+          <div className="rk-dob-col rk-dob-month">
+            <label htmlFor={`${id}-month`} className="rk-dob-sublabel">Month</label>
+            <select
+              id={`${id}-month`}
+              className={`rk-input rk-dob-select${currentMonth ? '' : ' rk-placeholder-shown'}`}
+              value={currentMonth}
+              aria-required={required || undefined}
+              aria-invalid={Boolean(error)}
+              aria-describedby={describedBy(id, hint, error)}
+              onChange={e => handlePartChange('month', e.target.value)}
+            >
+              <option value="">Month</option>
+              {MONTH_NAMES.map((name, i) => {
+                const monthStr = String(i + 1).padStart(2, '0');
+                return <option key={monthStr} value={monthStr}>{name}</option>;
+              })}
+            </select>
+          </div>
+
+          <div className="rk-dob-col rk-dob-year">
+            <label htmlFor={`${id}-year`} className="rk-dob-sublabel">Year</label>
+            <select
+              id={`${id}-year`}
+              className={`rk-input rk-dob-select${currentYear ? '' : ' rk-placeholder-shown'}`}
+              value={currentYear}
+              aria-required={required || undefined}
+              aria-invalid={Boolean(error)}
+              aria-describedby={describedBy(id, hint, error)}
+              onChange={e => handlePartChange('year', e.target.value)}
+            >
+              <option value="">Year</option>
+              {years.map(y => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {formattedPreview && (
+          <div className="rk-dob-preview">
+            <span className="rk-dob-tick" aria-hidden="true">✓</span> {formattedPreview}
+          </div>
+        )}
+      </div>
+    </InputBox>
+  );
+};
+
 // ─── Radio answers in a row of boxes ─────────────────────────────────────────
 export interface ChoiceOption {
   value: string;

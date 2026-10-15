@@ -114,19 +114,41 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
         onChange={v => onPropertyChange({ postcode: v.replace(/\D/g, '').slice(0, 4) })} />
 
       {isPurchaser ? (
-        <SelectField
-          id="property-intendedUse"
-          label="This property is for"
-          required
-          placeholder="Select purpose"
-          options={[
-            { value: 'To live in', label: 'Living in' },
-            { value: 'For investment', label: 'Investment' }
-          ]}
-          value={property.intendedUse}
-          error={errors['property-intendedUse']}
-          onChange={v => onPropertyChange({ intendedUse: v })}
-        />
+        <>
+          <SelectField
+            id="property-intendedUse"
+            label="This property is for"
+            required
+            placeholder="Select purpose"
+            options={[
+              { value: 'To live in', label: 'Living in' },
+              { value: 'For investment', label: 'Investment' }
+            ]}
+            value={property.intendedUse}
+            error={errors['property-intendedUse']}
+            onChange={v => onPropertyChange({ intendedUse: v })}
+          />
+          <SelectField
+            id="property-ownershipType"
+            label="Type of ownership"
+            required={formData.parties.length > 1}
+            placeholder="Select ownership type"
+            hint={formData.parties.length > 1
+              ? 'How multiple purchasers will hold the title (Joint Tenants or Tenants in Common).'
+              : 'How the property title will be held.'}
+            options={formData.parties.length > 1 ? [
+              { value: 'Joint Tenants', label: 'Joint Tenants' },
+              { value: 'Tenants in Common', label: 'Tenants in Common' }
+            ] : [
+              { value: 'Sole Owner', label: 'Sole Owner' },
+              { value: 'Joint Tenants', label: 'Joint Tenants' },
+              { value: 'Tenants in Common', label: 'Tenants in Common' }
+            ]}
+            value={property.ownershipType || (formData.parties.length === 1 ? 'Sole Owner' : '')}
+            error={errors['property-ownershipType']}
+            onChange={v => onPropertyChange({ ownershipType: v })}
+          />
+        </>
       ) : (
         <>
           {mortgage}

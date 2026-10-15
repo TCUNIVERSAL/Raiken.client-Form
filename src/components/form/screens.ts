@@ -33,7 +33,7 @@ export function personScreens(partyId: string): Screen[] {
   const field = (k: string) => (k.startsWith(`${partyId}-`) ? k.slice(partyId.length + 1) : null);
   return [
     { id: 'details', title: 'Personal details', short: 'personal details', owns: k => DETAILS_FIELDS.includes(field(k) ?? '') },
-    { id: 'address', title: 'Current address and identity', short: 'address', owns: k => field(k) !== null && !DETAILS_FIELDS.includes(field(k) as string) }
+    { id: 'address', title: 'Current address', short: 'address', owns: k => field(k) !== null && !DETAILS_FIELDS.includes(field(k) as string) }
   ];
 }
 

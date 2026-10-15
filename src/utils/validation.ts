@@ -142,8 +142,12 @@ const choose = (value: string, message: string) => (value ? null : message);
 // ─── Step-level validators ───────────────────────────────────────────────────
 export function validatePartyDetails(p: PartyFormData): FieldErrors {
   const e: FieldErrors = {};
-  set(e, 'firstName', p.firstName.trim() ? null : 'Please enter the first name.');
-  set(e, 'lastName', p.lastName.trim() ? null : 'Please enter the last name (surname).');
+  if (p.isSingleName) {
+    set(e, 'firstName', p.firstName.trim() ? null : 'Please enter your full legal name.');
+  } else {
+    set(e, 'firstName', p.firstName.trim() ? null : 'Please enter the first name.');
+    set(e, 'lastName', p.lastName.trim() ? null : 'Please enter the last name (surname).');
+  }
   set(e, 'mobile', checkPhone(p.mobile, p.phoneCountryCode || '+61'));
   set(e, 'email', checkEmail(p.email));
   set(e, 'dob', checkDate(p.dob, DOB_MIN, dobMax(), {
@@ -183,6 +187,9 @@ export function validateProperty(data: ClientIntakeFormData): FieldErrors {
 
   if (isPurchaser) {
     set(e, 'property.intendedUse', choose(property.intendedUse, 'Please choose what the property is for.'));
+    if (data.parties && data.parties.length > 1) {
+      set(e, 'property.ownershipType', choose(property.ownershipType, 'Please choose the type of ownership (Joint Tenants or Tenants in Common).'));
+    }
   }
 
   set(e, 'finance.mortgageRequired', choose(finance.mortgageRequired, isPurchaser ? 'Please answer: are you taking a mortgage?' : 'Please answer: is there a mortgage on the property?'));

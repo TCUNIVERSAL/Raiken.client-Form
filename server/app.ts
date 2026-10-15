@@ -229,7 +229,10 @@ function findMissingRequiredField(formData: any): string | null {
   if (!Array.isArray(formData.parties) || formData.parties.length === 0) return 'At least one person is required.';
   for (const [i, p] of formData.parties.entries()) {
     const who = `${formData.role} ${i + 1}`;
-    if (!p?.firstName?.trim() || !p?.lastName?.trim()) return `${who}: full name is required.`;
+    const isSingle = Boolean(p?.isSingleName);
+    if (isSingle ? !p?.firstName?.trim() : (!p?.firstName?.trim() || !p?.lastName?.trim())) {
+      return `${who}: full name is required.`;
+    }
     if (!p.email || !EMAIL_RE.test(String(p.email).trim())) return `${who}: a valid email is required.`;
     if (!p.mobile?.trim()) return `${who}: a contact number is required.`;
     const phoneErr = checkPhone(p.mobile, p.phoneCountryCode || '+61');
@@ -263,7 +266,9 @@ app.post('/api/intake', async (req: Request, res: Response) => {
     }
 
     const primaryParty = formData.parties[0];
-    const clientName = `${primaryParty.firstName || ''} ${primaryParty.lastName || ''}`.trim() || 'Valued Client';
+    const clientName = primaryParty.isSingleName
+      ? (primaryParty.firstName || '').trim() || 'Valued Client'
+      : `${primaryParty.firstName || ''} ${primaryParty.lastName || ''}`.trim() || 'Valued Client';
     const clientEmail = primaryParty.email || '';
     const clientPhone = primaryParty.mobile || '';
 

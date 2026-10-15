@@ -38,12 +38,33 @@ export const SubmissionSuccess: React.FC<SubmissionSuccessProps> = ({ response, 
       </dl>
 
       <div className="rk-done-columns">
-        <div className="rk-next-steps">
-          <h2>What happens next</h2>
-          <ol>
-            <li>{several ? 'Each person gets' : 'You’ll get'} an email from <strong>LiveSign</strong> (check junk too).</li>
-            <li>Open it on your phone, scan your ID and take a selfie (about 5 minutes).</li>
-            <li>We’ll email you once you’re verified. Keep your reference if you call us.</li>
+        <div className="rk-next-steps rk-next-steps-card rk-flash-pulse" role="region" aria-label="What happens next">
+          <div className="rk-next-steps-header">
+            <span className="rk-flash-badge">
+              <span className="rk-pulse-dot" aria-hidden="true" />
+              ACTION REQUIRED ON YOUR PHONE
+            </span>
+            <h2>What happens next</h2>
+          </div>
+          <ol className="rk-steps-timeline">
+            <li className="rk-step-item">
+              <span className="rk-step-num" aria-hidden="true">1</span>
+              <div className="rk-step-content">
+                <strong>You'll get an email from LiveSign</strong> <span className="rk-step-sub">(check junk too).</span>
+              </div>
+            </li>
+            <li className="rk-step-item">
+              <span className="rk-step-num" aria-hidden="true">2</span>
+              <div className="rk-step-content">
+                <strong>Open it on your phone</strong>, scan your ID and take a selfie <span className="rk-step-sub">(about 5 minutes).</span>
+              </div>
+            </li>
+            <li className="rk-step-item">
+              <span className="rk-step-num" aria-hidden="true">3</span>
+              <div className="rk-step-content">
+                <strong>We'll email you once you're verified.</strong> Keep your reference if you call us.
+              </div>
+            </li>
           </ol>
         </div>
 

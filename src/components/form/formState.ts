@@ -31,6 +31,7 @@ export function newPartyId(): string {
 export function createParty(id: string = newPartyId()): PartyFormData {
   return {
     id,
+    isSingleName: false,
     firstName: '',
     middleName: '',
     lastName: '',
@@ -55,6 +56,7 @@ export function createInitialFormData(): ClientIntakeFormData {
   return {
     role: 'Purchaser',
     roleConfirmed: false,
+    isCompanyOrTrust: 'No',
     partyCount: 1,
     parties: [createParty('p1')],
     property: {

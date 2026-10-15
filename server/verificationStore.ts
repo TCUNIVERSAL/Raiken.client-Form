@@ -94,7 +94,7 @@ export async function startVerification(intake: any): Promise<{ intake: IntakeRe
     matter_reference: record.matter_reference,
     party_id: String(p.id || `p${i + 1}`),
     party_index: i,
-    full_name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+    full_name: p.isSingleName ? (p.firstName || '').trim() : `${p.firstName || ''} ${p.lastName || ''}`.trim(),
     email: String(p.email || '').trim(),
     mobile: String(p.mobile || '').trim(),
     status: 'unverified',

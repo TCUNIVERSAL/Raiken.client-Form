@@ -241,7 +241,7 @@ export const ClientIntakeWizard: React.FC = () => {
   };
 
   /** Sets buying/selling and the number of people (people past the new count are removed). */
-  const applySetup = (newRole: ConveyancingRole, count: number) => {
+  const applySetup = (newRole: ConveyancingRole, count: number, isCompany?: 'Yes' | 'No') => {
     const clamped = Math.max(1, Math.min(MAX_PARTIES, count));
     saveSoon();
     setFormData(prev => {
@@ -250,7 +250,7 @@ export const ClientIntakeWizard: React.FC = () => {
       if (parties.length > clamped) parties = parties.slice(0, clamped);
       // The first person has nobody "above" them to copy an address from
       if (parties[0]?.sameAddressAsPrevious) parties[0] = { ...parties[0], sameAddressAsPrevious: false };
-      return { ...prev, role: newRole, roleConfirmed: true, parties, partyCount: parties.length };
+      return { ...prev, role: newRole, roleConfirmed: true, isCompanyOrTrust: isCompany || 'No', parties, partyCount: parties.length };
     });
   };
 
@@ -358,9 +358,9 @@ export const ClientIntakeWizard: React.FC = () => {
     goToStep('start');
   };
 
-  const handleSetupContinue = (newRole: ConveyancingRole, count: number) => {
+  const handleSetupContinue = (newRole: ConveyancingRole, count: number, isCompany?: 'Yes' | 'No') => {
     const changed = !formData.roleConfirmed || newRole !== role || count !== total;
-    applySetup(newRole, count);
+    applySetup(newRole, count, isCompany);
     const back = stepBeforeSetupRef.current;
     stepBeforeSetupRef.current = null;
     if (!changed && back) goToStep(back);
@@ -446,7 +446,7 @@ export const ClientIntakeWizard: React.FC = () => {
     };
     const payload: ClientIntakeFormData = {
       ...formData,
-      property: { ...formData.property, ownershipType: '' },
+      property: { ...formData.property },
       finance,
       stampDuty: { ...formData.stampDuty, notes: '' },
       // Drop purchaser-only answers left over if the client switched role part-way through
@@ -510,6 +510,7 @@ export const ClientIntakeWizard: React.FC = () => {
         <SetupStep
           role={formData.roleConfirmed ? role : null}
           count={total}
+          isCompanyOrTrust={formData.isCompanyOrTrust}
           editing={formData.roleConfirmed}
           returningUserName={returningUser}
           removalWarning={removalWarning}

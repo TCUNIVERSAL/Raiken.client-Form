@@ -1,10 +1,8 @@
 import React from 'react';
 import { ClientIntakeFormData, PartyFormData, UploadedDocument } from '../../types/index.js';
-import { DOB_MIN, dobMax } from '../../utils/validation.js';
 import { Address, formatAddress, pickAddress } from './formState.js';
-import { DateField, SelectField, TextField } from './fields.js';
+import { DateOfBirthField, SelectField, TextField } from './fields.js';
 import { PhoneField } from './PhoneField.js';
-import { FileUpload } from './FileUpload.js';
 import { AddressFields } from './AddressFields.js';
 import { PersonScreen } from './screens.js';
 
@@ -13,10 +11,10 @@ interface PeopleStepProps {
   partyIndex: number;
   screen: PersonScreen;
   errors: Record<string, string>;
-  onUpdateParty: (index: number, field: keyof PartyFormData, value: string) => void;
-  onAddDocument: (partyId: string, doc: UploadedDocument) => void;
-  onRemoveDocument: (partyId: string, docId: string) => void;
-  onUploadingChange: (uploading: boolean) => void;
+  onUpdateParty: (index: number, field: keyof PartyFormData, value: any) => void;
+  onAddDocument?: (partyId: string, doc: UploadedDocument) => void;
+  onRemoveDocument?: (partyId: string, docId: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   onAddressChange: (index: number, patch: Partial<Address>) => void;
   onSameAsAbove: (index: number, checked: boolean) => void;
 }
@@ -31,11 +29,12 @@ export const RESIDENCY_OPTIONS = [
 export const MAX_SELECTABLE = 6;
 
 export function partyDisplayName(p: PartyFormData): string {
+  if (p.isSingleName) return p.firstName.trim();
   return [p.firstName, p.lastName].filter(s => s.trim()).join(' ');
 }
 
 export const PeopleStep: React.FC<PeopleStepProps> = ({
-  formData, partyIndex, screen, errors, onUpdateParty, onAddDocument, onRemoveDocument, onUploadingChange,
+  formData, partyIndex, screen, errors, onUpdateParty,
   onAddressChange, onSameAsAbove
 }) => {
   const role = formData.role;
@@ -46,24 +45,57 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
   const id = (field: string) => `${party.id}-${field}`;
   const update = (field: keyof PartyFormData) => (value: string) => onUpdateParty(index, field, value);
   const previousName = previous ? (partyDisplayName(previous) || `${role} ${index}`) : '';
+  const isSingle = Boolean(party.isSingleName);
 
   if (screen === 'details') {
     return (
       <div className="rk-fields">
-        <TextField id={id('firstName')} label="First name" required autoComplete={index === 0 ? 'given-name' : 'off'}
-          value={party.firstName} error={errors[id('firstName')]} onChange={update('firstName')} />
-        <TextField id={id('middleName')} label="Middle name" autoComplete={index === 0 ? 'additional-name' : 'off'}
-          value={party.middleName} onChange={update('middleName')} />
-        <TextField id={id('lastName')} label="Last name" required wide autoComplete={index === 0 ? 'family-name' : 'off'}
-          value={party.lastName} error={errors[id('lastName')]} onChange={update('lastName')} />
-        <DateField
+        <div className="rk-field rk-wide rk-single-name-wrap">
+          <label className="rk-inline-check rk-single-name-toggle">
+            <input
+              type="checkbox"
+              checked={isSingle}
+              onChange={e => {
+                const checked = e.target.checked;
+                onUpdateParty(index, 'isSingleName', checked);
+                if (checked) {
+                  onUpdateParty(index, 'middleName', '');
+                  onUpdateParty(index, 'lastName', '');
+                }
+              }}
+            />
+            <span>Single legal name only <small>(tick if you have only one name)</small></span>
+          </label>
+        </div>
+
+        {isSingle ? (
+          <TextField
+            id={id('firstName')}
+            label="Full legal name"
+            required
+            wide
+            autoComplete={index === 0 ? 'name' : 'off'}
+            hint="Enter your official single name as shown on your passport or ID."
+            value={party.firstName}
+            error={errors[id('firstName')]}
+            onChange={update('firstName')}
+          />
+        ) : (
+          <>
+            <TextField id={id('firstName')} label="First name" required autoComplete={index === 0 ? 'given-name' : 'off'}
+              value={party.firstName} error={errors[id('firstName')]} onChange={update('firstName')} />
+            <TextField id={id('middleName')} label="Middle name" autoComplete={index === 0 ? 'additional-name' : 'off'}
+              value={party.middleName} onChange={update('middleName')} />
+            <TextField id={id('lastName')} label="Last name" required wide autoComplete={index === 0 ? 'family-name' : 'off'}
+              value={party.lastName} error={errors[id('lastName')]} onChange={update('lastName')} />
+          </>
+        )}
+
+        <DateOfBirthField
           id={id('dob')}
           label="Date of birth"
           required
-          hint="Used to verify your identity."
-          min={DOB_MIN}
-          max={dobMax()}
-          autoComplete={index === 0 ? 'bday' : 'off'}
+          hint="Used to verify your identity with LiveSign."
           value={party.dob}
           error={errors[id('dob')]}
           onChange={update('dob')}
@@ -133,17 +165,6 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
         />
         <TextField id={id('occupation')} label="Occupation" required autoComplete="off"
           value={party.occupation} error={errors[id('occupation')]} onChange={update('occupation')} />
-        <FileUpload
-          id={id('idDocuments')}
-          label="Identity documents"
-          hint="Driving licence, passport, or photo card."
-          kind="identity"
-          partyId={party.id}
-          value={party.idDocuments}
-          onAdd={doc => onAddDocument(party.id, doc)}
-          onRemove={docId => onRemoveDocument(party.id, docId)}
-          onUploadingChange={onUploadingChange}
-        />
       </div>
     </>
   );

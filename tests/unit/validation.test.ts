@@ -25,6 +25,14 @@ describe('Person details validation', () => {
     assert.deepEqual(Object.keys(errors).sort(), ['dob', 'email', 'firstName', 'lastName', 'mobile', 'occupation', 'residencyStatus'].sort());
   });
 
+  test('TC-VAL-02b a person with single name does not require last name', () => {
+    const party = { ...validParty(), isSingleName: true, lastName: '' };
+    assert.deepEqual(validatePartyDetails(party), {});
+    const emptySingle = { ...createParty('p1'), isSingleName: true };
+    const errors = validatePartyDetails(emptySingle);
+    assert.deepEqual(Object.keys(errors).sort(), ['dob', 'email', 'firstName', 'mobile', 'occupation', 'residencyStatus'].sort());
+  });
+
   test('TC-VAL-03 invalid email addresses are rejected', () => {
     for (const email of ['dhruvil', 'dhruvil@', 'dhruvil@gmail', 'a b@gmail.com']) {
       assert.ok(validatePartyDetails({ ...validParty(), email }).email, `${email} should be invalid`);
@@ -108,7 +116,7 @@ describe('Property, mortgage and payment validation', () => {
     assert.equal(validateProperty(f)['finance.brokerPhone'], undefined);
   });
 
-  test('TC-VAL-14 ownership type is no longer asked, so it is never required; broker email is checked when given', () => {
+  test('TC-VAL-14 ownership type is not required for 1 purchaser; broker email is checked when given', () => {
     const f = form();
     f.property.ownershipType = '';
     assert.equal(validateProperty(f)['property.ownershipType'], undefined);
@@ -116,6 +124,17 @@ describe('Property, mortgage and payment validation', () => {
     assert.ok(validateProperty(f)['finance.brokerEmail']);
     f.finance.brokerEmail = 'broker@example.com';
     assert.equal(validateProperty(f)['finance.brokerEmail'], undefined);
+  });
+
+  test('TC-VAL-14b multiple purchasers must choose Joint Tenants or Tenants in Common', () => {
+    const f = form();
+    f.parties = [validParty(), { ...validParty(), id: 'p2' }];
+    f.property.ownershipType = '';
+    assert.ok(validateProperty(f)['property.ownershipType'], 'Multiple purchasers require ownership type');
+    f.property.ownershipType = 'Joint Tenants';
+    assert.equal(validateProperty(f)['property.ownershipType'], undefined);
+    f.property.ownershipType = 'Tenants in Common';
+    assert.equal(validateProperty(f)['property.ownershipType'], undefined);
   });
 
   test('TC-VAL-15 settlement date cannot be in the past', () => {

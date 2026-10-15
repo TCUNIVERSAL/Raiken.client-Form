@@ -87,7 +87,7 @@ export function firmSummary(intake: IntakeRecord): FirmFormSummary {
     role: intake.role,
     propertyAddress: formatPropertyAddress(intake.property),
     people: (intake.parties || []).map((p: any) => ({
-      name: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+      name: p.isSingleName ? (p.firstName || '').trim() : `${p.firstName || ''} ${p.lastName || ''}`.trim(),
       email: String(p.email || ''),
       mobile: String(p.mobile || '')
     }))

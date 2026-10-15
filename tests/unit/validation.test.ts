@@ -22,7 +22,7 @@ describe('Person details validation', () => {
 
   test('TC-VAL-02 an empty person reports every required field', () => {
     const errors = validatePartyDetails(createParty('p1'));
-    assert.deepEqual(Object.keys(errors).sort(), ['dob', 'email', 'firstName', 'lastName', 'mobile', 'occupation', 'residencyStatus'].sort());
+    assert.deepEqual(Object.keys(errors).sort(), ['dob', 'email', 'firstName', 'mobile', 'occupation', 'residencyStatus'].sort());
   });
 
   test('TC-VAL-02b a person with single name does not require last name', () => {
@@ -116,9 +116,11 @@ describe('Property, mortgage and payment validation', () => {
     assert.equal(validateProperty(f)['finance.brokerPhone'], undefined);
   });
 
-  test('TC-VAL-14 ownership type is not required for 1 purchaser; broker email is checked when given', () => {
+  test('TC-VAL-14 ownership type is required for purchasers; broker email is checked when given', () => {
     const f = form();
     f.property.ownershipType = '';
+    assert.ok(validateProperty(f)['property.ownershipType'], 'Ownership type is required');
+    f.property.ownershipType = 'Sole Owner';
     assert.equal(validateProperty(f)['property.ownershipType'], undefined);
     f.finance.brokerEmail = 'not-an-email';
     assert.ok(validateProperty(f)['finance.brokerEmail']);

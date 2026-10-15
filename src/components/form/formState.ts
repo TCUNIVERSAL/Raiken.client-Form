@@ -2,6 +2,8 @@ import { ClientIntakeFormData, ConveyancingRole, PartyFormData, UploadedDocument
 import { todayIso } from '../../utils/validation.js';
 
 export const MAX_PARTIES = 20;
+/** Maximum people selectable in the setup step counter */
+export const MAX_SELECTABLE = 6;
 
 // ─── Steps ───────────────────────────────────────────────────────────────────
 export type StepKey = 'start' | 'people' | 'property' | 'stampDuty' | 'review';

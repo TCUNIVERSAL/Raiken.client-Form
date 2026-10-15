@@ -106,7 +106,7 @@ export function buildEnvelopePayload(intake: { matterReference: string; role: st
   };
 
   const customers = (intake.parties || []).map((p: any, i: number) => {
-    const isSingle = Boolean(p.isSingleName);
+    const isSingle = Boolean(p.isSingleName || !text(p.lastName));
     const firstName = text(p.firstName);
     const lastName = isSingle ? (text(p.lastName) || firstName) : text(p.lastName);
     const orgName = isSingle ? firstName : `${firstName} ${lastName}`.trim();

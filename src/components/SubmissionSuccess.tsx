@@ -38,11 +38,10 @@ export const SubmissionSuccess: React.FC<SubmissionSuccessProps> = ({ response, 
       </dl>
 
       <div className="rk-done-columns">
-        <div className="rk-next-steps rk-next-steps-card rk-flash-pulse" role="region" aria-label="What happens next">
+        <div className="rk-next-steps rk-next-steps-card" role="region" aria-label="What happens next">
           <div className="rk-next-steps-header">
-            <span className="rk-flash-badge">
-              <span className="rk-pulse-dot" aria-hidden="true" />
-              ACTION REQUIRED ON YOUR PHONE
+            <span className="rk-next-steps-badge">
+              Next steps with LiveSign
             </span>
             <h2>What happens next</h2>
           </div>

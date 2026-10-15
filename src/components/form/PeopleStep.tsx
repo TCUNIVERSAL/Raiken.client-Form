@@ -18,15 +18,15 @@ interface PeopleStepProps {
   onAddressChange: (index: number, patch: Partial<Address>) => void;
   onSameAsAbove: (index: number, checked: boolean) => void;
 }
+import { MAX_SELECTABLE } from './formState.js';
 
-export const RESIDENCY_OPTIONS = [
+const RESIDENCY_OPTIONS = [
   { value: 'Australian Citizen', label: 'Australian citizen' },
   { value: 'Permanent Resident', label: 'Permanent resident' },
   { value: 'Temporary Resident', label: 'Temporary resident' }
 ];
 
-/** People on one contract: 1 to 6. */
-export const MAX_SELECTABLE = 6;
+export { MAX_SELECTABLE };
 
 export function partyDisplayName(p: PartyFormData): string {
   if (p.isSingleName) return p.firstName.trim();
@@ -45,51 +45,35 @@ export const PeopleStep: React.FC<PeopleStepProps> = ({
   const id = (field: string) => `${party.id}-${field}`;
   const update = (field: keyof PartyFormData) => (value: string) => onUpdateParty(index, field, value);
   const previousName = previous ? (partyDisplayName(previous) || `${role} ${index}`) : '';
-  const isSingle = Boolean(party.isSingleName);
-
   if (screen === 'details') {
     return (
       <div className="rk-fields">
-        <div className="rk-field rk-wide rk-single-name-wrap">
-          <label className="rk-inline-check rk-single-name-toggle">
-            <input
-              type="checkbox"
-              checked={isSingle}
-              onChange={e => {
-                const checked = e.target.checked;
-                onUpdateParty(index, 'isSingleName', checked);
-                if (checked) {
-                  onUpdateParty(index, 'middleName', '');
-                  onUpdateParty(index, 'lastName', '');
-                }
-              }}
-            />
-            <span>Single legal name only <small>(tick if you have only one name)</small></span>
-          </label>
-        </div>
-
-        {isSingle ? (
-          <TextField
-            id={id('firstName')}
-            label="Full legal name"
-            required
-            wide
-            autoComplete={index === 0 ? 'name' : 'off'}
-            hint="Enter your official single name as shown on your passport or ID."
-            value={party.firstName}
-            error={errors[id('firstName')]}
-            onChange={update('firstName')}
-          />
-        ) : (
-          <>
-            <TextField id={id('firstName')} label="First name" required autoComplete={index === 0 ? 'given-name' : 'off'}
-              value={party.firstName} error={errors[id('firstName')]} onChange={update('firstName')} />
-            <TextField id={id('middleName')} label="Middle name" autoComplete={index === 0 ? 'additional-name' : 'off'}
-              value={party.middleName} onChange={update('middleName')} />
-            <TextField id={id('lastName')} label="Last name" required wide autoComplete={index === 0 ? 'family-name' : 'off'}
-              value={party.lastName} error={errors[id('lastName')]} onChange={update('lastName')} />
-          </>
-        )}
+        <TextField
+          id={id('firstName')}
+          label="First name"
+          required
+          autoComplete={index === 0 ? 'given-name' : 'off'}
+          value={party.firstName}
+          error={errors[id('firstName')]}
+          onChange={update('firstName')}
+        />
+        <TextField
+          id={id('middleName')}
+          label="Middle name"
+          autoComplete={index === 0 ? 'additional-name' : 'off'}
+          value={party.middleName}
+          onChange={update('middleName')}
+        />
+        <TextField
+          id={id('lastName')}
+          label="Last name"
+          placeholder="Last name"
+          wide
+          autoComplete={index === 0 ? 'family-name' : 'off'}
+          value={party.lastName}
+          error={errors[id('lastName')]}
+          onChange={update('lastName')}
+        />
 
         <DateOfBirthField
           id={id('dob')}

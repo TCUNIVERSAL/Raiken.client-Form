@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ClientIntakeFormData, DeclarationFormData, PartyFormData } from '../../types/index.js';
 import { formatDateLong, signedDateMin, stampDutyVisibility, todayIso } from '../../utils/validation.js';
 import { DateField, TextField } from './fields.js';
@@ -68,6 +68,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
   const isPurchaser = role === 'Purchaser';
   /** The card whose answers are shown below the cards (null = none). */
   const [openKey, setOpenKey] = useState<string | null>(null);
+
+  // Autofill the date with today's date when the form is being reviewed / filled
+  useEffect(() => {
+    if (!declaration.signedDate || declaration.signedDate !== todayIso()) {
+      onDeclarationChange({ signedDate: todayIso() });
+    }
+  }, []);
+
   const money = (v: string) => (v ? `$${Number(v).toLocaleString('en-AU')}` : '');
   const sd = stampDutyVisibility(stampDuty);
   const propertyAddress = [property.addressLine1, property.suburb, [property.state, property.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -228,7 +236,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData, problems, erro
             required
             min={signedDateMin()}
             max={todayIso()}
-            value={declaration.signedDate}
+            value={declaration.signedDate || todayIso()}
             error={errors['declaration-signedDate']}
             onChange={v => onDeclarationChange({ signedDate: v })}
           />

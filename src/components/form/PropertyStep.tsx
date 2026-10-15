@@ -131,7 +131,7 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
           <SelectField
             id="property-ownershipType"
             label="Type of ownership"
-            required={formData.parties.length > 1}
+            required
             placeholder="Select ownership type"
             hint={formData.parties.length > 1
               ? 'How multiple purchasers will hold the title (Joint Tenants or Tenants in Common).'
@@ -144,7 +144,7 @@ export const PropertyStep: React.FC<PropertyStepProps> = ({
               { value: 'Joint Tenants', label: 'Joint Tenants' },
               { value: 'Tenants in Common', label: 'Tenants in Common' }
             ]}
-            value={property.ownershipType || (formData.parties.length === 1 ? 'Sole Owner' : '')}
+            value={property.ownershipType}
             error={errors['property-ownershipType']}
             onChange={v => onPropertyChange({ ownershipType: v })}
           />

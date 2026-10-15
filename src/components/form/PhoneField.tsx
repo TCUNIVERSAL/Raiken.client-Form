@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ErrorText, LabelText, useFieldValid } from './fields.js';
 
 /** Country dial codes — most common first, then alphabetical. */
-export const COUNTRY_CODES = [
+const COUNTRY_CODES = [
   { code: '+61',  flag: '🇦🇺', label: 'Australia',       short: 'AU' },
   { code: '+64',  flag: '🇳🇿', label: 'New Zealand',     short: 'NZ' },
   { code: '+44',  flag: '🇬🇧', label: 'United Kingdom',  short: 'UK' },

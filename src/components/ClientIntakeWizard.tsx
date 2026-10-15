@@ -22,6 +22,7 @@ import { ReviewProblem, ReviewStep } from './form/ReviewStep.js';
 import { allScreens, PersonScreen, PropertyScreen, ScreenId, screensFor, StampDutyScreen } from './form/screens.js';
 import { useSessionSync } from './form/useSessionSync.js';
 import { SaveStatus, saveStateFor } from './form/SaveStatus.js';
+import { PreSubmitModal } from './PreSubmitModal.js';
 import '../form.css';
 
 function prefixKeys(errors: FieldErrors, prefix: string): FieldErrors {
@@ -55,6 +56,7 @@ export const ClientIntakeWizard: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<{ response: SubmissionResponse; formData: ClientIntakeFormData } | null>(null);
   const [returningUser, setReturningUser] = useState('');
+  const [showNextStepsModal, setShowNextStepsModal] = useState(false);
 
   const sync = useSessionSync(ready && !submission);
   const saveImmediatelyRef = useRef(false);
@@ -404,8 +406,8 @@ export const ClientIntakeWizard: React.FC = () => {
   };
 
   // ─── Submission (API → Supabase → confirmation email) ─────────────────────
-  const handleSubmitIntake = async () => {
-    if (submittingRef.current) return; // a double click must never send the form twice
+  const handleSubmitIntake = () => {
+    if (submittingRef.current || isSubmitting) return; // a double click must never send the form twice
     const declarationErrors = errorsForStep('review');
     setAttempted(a => ({ ...a, review: true }));
     if (reviewProblems.length > 0) {
@@ -421,6 +423,12 @@ export const ClientIntakeWizard: React.FC = () => {
     }
     if (uploadsInFlight > 0) return;
 
+    // Show popup modal with "What happens next" before final submit
+    setShowNextStepsModal(true);
+  };
+
+  const handleConfirmFinalSubmit = async () => {
+    if (submittingRef.current) return;
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
@@ -473,6 +481,7 @@ export const ClientIntakeWizard: React.FC = () => {
         throw new Error(data.message || 'Submission failed.');
       }
       sync.markSubmitted();
+      setShowNextStepsModal(false);
       setSubmission({ response: data, formData: payload });
       window.scrollTo(0, 0);
     } catch (err: any) {
@@ -480,6 +489,7 @@ export const ClientIntakeWizard: React.FC = () => {
       setSubmitError(navigator.onLine
         ? err.message || 'Something went wrong while sending the form.'
         : 'You appear to be offline.');
+      setShowNextStepsModal(false);
       window.scrollTo(0, 0);
     } finally {
       submittingRef.current = false;
@@ -667,6 +677,13 @@ export const ClientIntakeWizard: React.FC = () => {
           {!isSubmitting && <span className="rk-arrow" aria-hidden="true">›</span>}
         </button>
       </div>
+
+      <PreSubmitModal
+        isOpen={showNextStepsModal}
+        isSubmitting={isSubmitting}
+        onConfirm={handleConfirmFinalSubmit}
+        onClose={() => setShowNextStepsModal(false)}
+      />
     </div>
   );
 };

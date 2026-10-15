@@ -1,5 +1,6 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { cleanMoneyInput, formatMoneyDisplay } from '../../utils/format.js';
+import { todayIso } from '../../utils/validation.js';
 
 /*
  * Form building blocks in the rcorpo.com style:
@@ -186,13 +187,39 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   </InputBox>
 );
 
+export function isoToDisplayDate(iso: string): string {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d} / ${m} / ${y}`;
+}
+
+export function digitsToDisplay(digits: string): string {
+  const d = digits.slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)} / ${d.slice(2)}`;
+  return `${d.slice(0, 2)} / ${d.slice(2, 4)} / ${d.slice(4, 8)}`;
+}
+
+export function digitsToIso(digits: string): string {
+  if (digits.length !== 8) return '';
+  const day = parseInt(digits.slice(0, 2), 10);
+  const month = parseInt(digits.slice(2, 4), 10);
+  const year = parseInt(digits.slice(4, 8), 10);
+  if (month < 1 || month > 12) return '';
+  if (day < 1 || day > 31) return '';
+  if (year < 1900 || year > 2100) return '';
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day > daysInMonth) return '';
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 interface DateFieldProps {
   id: string;
   label: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
-  min: string;
-  max: string;
+  min?: string;
+  max?: string;
   required?: boolean;
   hint?: React.ReactNode;
   error?: string;
@@ -202,168 +229,103 @@ interface DateFieldProps {
   children?: React.ReactNode;
 }
 
-/** Native date picker (the phone's own calendar on mobile). */
-export const DateField: React.FC<DateFieldProps> = ({ id, label, value, onChange, min, max, required, hint, error, autoComplete, wide, className, children }) => (
-  <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value)} className={className}>
-    <input
-      id={id}
-      type="date"
-      className="rk-input"
-      value={value}
-      min={min}
-      max={max}
-      autoComplete={autoComplete}
-      aria-required={required || undefined}
-      aria-invalid={Boolean(error)}
-      aria-describedby={describedBy(id, hint, error)}
-      onChange={e => onChange(e.target.value)}
-      // Open the calendar when the box is clicked, not only the small icon
-      onClick={e => {
-        try {
-          (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-        } catch {
-          // Not supported, or already open — the native control still works
-        }
-      }}
-    />
-    {children}
-  </InputBox>
-);
-
-interface DateOfBirthFieldProps {
-  id: string;
-  label?: React.ReactNode;
-  value: string; // ISO "YYYY-MM-DD"
-  onChange: (value: string) => void;
-  required?: boolean;
-  hint?: React.ReactNode;
-  error?: string;
-  wide?: boolean;
-  className?: string;
-}
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
 /**
- * Three separate dropdowns (Day, Month, Year) for Date of Birth.
- * Prevents non-IT / mobile users from struggling with calendar year-pickers.
+ * Masked date field formatted as DD / MM / YYYY.
+ * Typing digits fills Day, Month, and Year automatically with numeric keyboard (inputMode="numeric").
  */
-export const DateOfBirthField: React.FC<DateOfBirthFieldProps> = ({
-  id, label = 'Date of birth', value, onChange, required, hint, error, wide = true, className
+export const DateField: React.FC<DateFieldProps> = ({
+  id, label, value, onChange, min, max, required, hint, error, autoComplete, wide, className, children
 }) => {
-  const parts = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split('-') : ['', '', ''];
-  const [currentYear, currentMonth, currentDay] = parts;
-
-  const yearNum = parseInt(currentYear, 10);
-  const monthNum = parseInt(currentMonth, 10);
-  const maxDays = (yearNum && monthNum) ? new Date(yearNum, monthNum, 0).getDate() : 31;
-
-  const maxAdultYear = new Date().getFullYear() - 18;
-  const years: number[] = [];
-  for (let y = maxAdultYear; y >= 1920; y--) {
-    years.push(y);
-  }
-
-  const handlePartChange = (part: 'day' | 'month' | 'year', val: string) => {
-    let d = part === 'day' ? val : currentDay;
-    let m = part === 'month' ? val : currentMonth;
-    let y = part === 'year' ? val : currentYear;
-
-    if (m && y && d) {
-      const daysInM = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
-      if (parseInt(d, 10) > daysInM) {
-        d = String(daysInM).padStart(2, '0');
-      }
+  const getInitialDigits = (val: string) => {
+    if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const [y, m, d] = val.split('-');
+      return `${d}${m}${y}`;
     }
+    return '';
+  };
 
-    if (d && m && y) {
-      onChange(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+  const [rawDigits, setRawDigits] = useState<string>(() => getInitialDigits(value));
+  const [prevVal, setPrevVal] = useState<string>(() => digitsToDisplay(getInitialDigits(value)));
+
+  useEffect(() => {
+    const expected = getInitialDigits(value);
+    if (expected && rawDigits !== expected) {
+      setRawDigits(expected);
+      setPrevVal(digitsToDisplay(expected));
+    } else if (!value && rawDigits.length === 8) {
+      setRawDigits('');
+      setPrevVal('');
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    let newDigits = newVal.replace(/\D/g, '').slice(0, 8);
+    // If user deleted characters but digit count stayed the same (e.g. deleted " / "), drop trailing digit
+    if (newVal.length < prevVal.length && newDigits.length === rawDigits.length && rawDigits.length > 0) {
+      newDigits = newDigits.slice(0, -1);
+    }
+    const formatted = digitsToDisplay(newDigits);
+    setRawDigits(newDigits);
+    setPrevVal(formatted);
+
+    if (newDigits.length === 8) {
+      const iso = digitsToIso(newDigits);
+      onChange(iso);
     } else {
-      onChange('');
+      if (value) onChange('');
     }
   };
 
-  const formattedPreview = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? (() => {
-    try {
-      const [y, m, d] = value.split('-').map(Number);
-      return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
-    } catch {
-      return '';
-    }
-  })() : '';
+  const displayText = digitsToDisplay(rawDigits);
+
+  const isPast = Boolean(min && value && /^\d{4}-\d{2}-\d{2}$/.test(value) && value < min);
+  const isFutureLimit = Boolean(max && value && /^\d{4}-\d{2}-\d{2}$/.test(value) && value > max);
+
+  const pastMessage = id === 'property-settlementDate' ? 'Settlement date cannot be in the past' : 'Date cannot be in the past';
+  const futureMessage = max === todayIso() ? 'The date cannot be in the future' : 'Date must be within 3 years';
 
   return (
-    <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value)} className={className}>
-      <div className="rk-dob-container">
-        <div className="rk-dob-row" role="group" aria-labelledby={`${id}-label`}>
-          <div className="rk-dob-col rk-dob-day">
-            <label htmlFor={id} className="rk-dob-sublabel">Day</label>
-            <select
-              id={id}
-              className={`rk-input rk-dob-select${currentDay ? '' : ' rk-placeholder-shown'}`}
-              value={currentDay}
-              aria-required={required || undefined}
-              aria-invalid={Boolean(error)}
-              aria-describedby={describedBy(id, hint, error)}
-              onChange={e => handlePartChange('day', e.target.value)}
-            >
-              <option value="">Day</option>
-              {Array.from({ length: maxDays }, (_, i) => {
-                const dayStr = String(i + 1).padStart(2, '0');
-                return <option key={dayStr} value={dayStr}>{i + 1}</option>;
-              })}
-            </select>
+    <InputBox id={id} label={label} required={required} hint={hint} error={error} wide={wide} filled={Boolean(value && !isPast && !isFutureLimit)} className={className}>
+      <div className="rk-date-input-wrap">
+        <input
+          id={id}
+          type="text"
+          className={`rk-input rk-date-input${(error || isPast || isFutureLimit) ? ' rk-input-has-error' : ''}`}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete={autoComplete || 'off'}
+          placeholder="DD / MM / YYYY"
+          maxLength={14}
+          value={displayText}
+          aria-required={required || undefined}
+          aria-invalid={Boolean(error || isPast || isFutureLimit)}
+          aria-describedby={describedBy(id, hint, error)}
+          onChange={handleChange}
+        />
+        {!error && isPast ? (
+          <div className="rk-date-error-inline" role="alert">
+            <span className="rk-date-error-icon" aria-hidden="true">!</span> {pastMessage}
           </div>
-
-          <div className="rk-dob-col rk-dob-month">
-            <label htmlFor={`${id}-month`} className="rk-dob-sublabel">Month</label>
-            <select
-              id={`${id}-month`}
-              className={`rk-input rk-dob-select${currentMonth ? '' : ' rk-placeholder-shown'}`}
-              value={currentMonth}
-              aria-required={required || undefined}
-              aria-invalid={Boolean(error)}
-              aria-describedby={describedBy(id, hint, error)}
-              onChange={e => handlePartChange('month', e.target.value)}
-            >
-              <option value="">Month</option>
-              {MONTH_NAMES.map((name, i) => {
-                const monthStr = String(i + 1).padStart(2, '0');
-                return <option key={monthStr} value={monthStr}>{name}</option>;
-              })}
-            </select>
+        ) : !error && isFutureLimit ? (
+          <div className="rk-date-error-inline" role="alert">
+            <span className="rk-date-error-icon" aria-hidden="true">!</span> {futureMessage}
           </div>
-
-          <div className="rk-dob-col rk-dob-year">
-            <label htmlFor={`${id}-year`} className="rk-dob-sublabel">Year</label>
-            <select
-              id={`${id}-year`}
-              className={`rk-input rk-dob-select${currentYear ? '' : ' rk-placeholder-shown'}`}
-              value={currentYear}
-              aria-required={required || undefined}
-              aria-invalid={Boolean(error)}
-              aria-describedby={describedBy(id, hint, error)}
-              onChange={e => handlePartChange('year', e.target.value)}
-            >
-              <option value="">Year</option>
-              {years.map(y => (
-                <option key={y} value={String(y)}>{y}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {formattedPreview && (
-          <div className="rk-dob-preview">
-            <span className="rk-dob-tick" aria-hidden="true">✓</span> {formattedPreview}
-          </div>
-        )}
+        ) : null}
       </div>
+      {children}
     </InputBox>
   );
 };
+
+export const DateOfBirthField: React.FC<DateFieldProps> = (props) => (
+  <DateField
+    {...props}
+    label={props.label || 'Date of birth'}
+    autoComplete="bday"
+    hint={props.hint || 'Type numbers for DD / MM / YYYY (e.g. 15081990).'}
+  />
+);
 
 // ─── Radio answers in a row of boxes ─────────────────────────────────────────
 export interface ChoiceOption {

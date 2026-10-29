@@ -1,20 +1,84 @@
-node_modules/
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECURITY & DEPLOYMENT .GITIGNORE
+#  Hardened for Public GitHub Repositories (Vercel Production Deployment)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── 1. ENVIRONMENT VARIABLES & SECRETS (STRICT NEVER-COMMIT) ─────────────────
+# Block all .env variations (.env, .env.production, .env.local, .env.staging, etc.)
+.env
+.env.*
+*.env
+*.local
+!.env.example
+
+# Private certificates, SSH keys, credentials
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.keystore
+id_rsa*
+secrets/
+
+# ─── 2. INTERNAL DOCUMENTATION & SPECIFICATIONS ──────────────────────────────
+# Prevent leaking architectural blueprints, integration docs, and recon info
+*.md
+*.markdown
+*.pdf
+*.docx
+*.doc
+docs/
+
+# ─── 3. VERCEL & BUILD ARTIFACTS ─────────────────────────────────────────────
+# Local Vercel project linkings and CLI state
+.vercel/
 dist/
 dist-ssr/
-*.local
-.env
-.env.*.local
-.env.local
+build/
+.output/
+*.tsbuildinfo
+
+# ─── 4. DEPENDENCIES & PACKAGE MANAGERS ──────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.npm
+.yarn
+
+# ─── 5. LOGS & DIAGNOSTICS ───────────────────────────────────────────────────
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-.DS_Store
-*.tsbuildinfo
+
+# ─── 6. LOCAL UPLOADS, SESSIONS & TEMPORARY FILES ────────────────────────────
 server/uploads/
-.claude/
-docs/
 server/tmp/
-.env.production
-*.md
+uploads/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.db
+*.sqlite
+
+# ─── 7. OS & IDE ARTIFACTS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+.claude/
+.gemini/

@@ -157,6 +157,10 @@ export async function sendIntakeToLiveSign(intake: IntakeRecord, opts: { notifyF
 
       if (!envelope?.id) throw new LiveSignError('LiveSign did not return an envelope id.', 502, true);
 
+      // Persist the envelope ID immediately so we keep the linkage even if /start requires billing/payment updates
+      intake.livesign_envelope_id = envelope.id;
+      await updateIntake(intake.id, { livesign_envelope_id: envelope.id, livesign_envelope_status: envelope.status || 'Draft' });
+
       // Express envelopes may be created as a draft; starting one sends the customer emails
       if (envelope.status === 'Draft') {
         await liveSignClient.post(`/api/Envelopes/${envelope.id}/start`);
@@ -203,7 +207,20 @@ export async function sendIntakeToLiveSign(intake: IntakeRecord, opts: { notifyF
 export async function syncIntakeFromLiveSign(intake: IntakeRecord): Promise<void> {
   if (!liveSignConfig.enabled || !intake.livesign_envelope_id || !UUID_RE.test(intake.livesign_envelope_id)) return;
   await exclusive(intake.id, async () => {
-    const envelope = await liveSignClient.get<any>(`/api/Envelopes/${intake.livesign_envelope_id}`);
+    let envelope: any;
+    try {
+      envelope = await liveSignClient.get<any>(`/api/Envelopes/${intake.livesign_envelope_id}`);
+    } catch (err: any) {
+      if (err instanceof LiveSignError && (err.status === 400 || err.status === 404)) {
+        await updateIntake(intake.id, {
+          livesign_status: 'send_error',
+          livesign_error: `Envelope ${intake.livesign_envelope_id} not found on this LiveSign account (${err.message})`
+        });
+        console.warn(`ℹ️  [LIVESIGN] ${intake.matter_reference}: envelope ${intake.livesign_envelope_id} does not exist on this LiveSign account — archived from active sync.`);
+        return;
+      }
+      throw err;
+    }
     const customers = envelopeCustomers(envelope);
     const people = await getPeople(intake.id);
     const at = new Date().toISOString();

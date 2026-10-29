@@ -86,10 +86,9 @@ describe('Email Extraction & Validation Rules', () => {
   });
 
   test('TC-EML-03 client gmail address is accepted', () => {
-    assert.ok(EMAIL_RE.test('revflow.co@gmail.com'));
-    assert.ok(EMAIL_RE.test('pateldhruvil9317@gmail.com'));
-    assert.ok(EMAIL_RE.test('vatsalrvachhani46@gmail.com'));
-    assert.ok(EMAIL_RE.test('vishwaschaudhary.ai@gmail.com'));
+    assert.ok(EMAIL_RE.test('test.client1@gmail.com'));
+    assert.ok(EMAIL_RE.test('test.client2@gmail.com'));
+    assert.ok(EMAIL_RE.test('test.client3@gmail.com'));
   });
 
   test('TC-EML-04 malformed email missing @ is rejected', () => {

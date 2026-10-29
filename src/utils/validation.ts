@@ -97,6 +97,12 @@ export function checkPhone(value: string, countryCode: string = '+61', required 
   if (!value.trim()) return required ? 'Please enter a contact number.' : null;
   if (!/^[\d\s()\-.]+$/.test(value.trim())) return 'Use numbers only, for example 0412 345 678.';
   const digits = value.replace(/[\s()+\-.]/g, '');
+  if (countryCode === '+61') {
+    // Australian mobiles for LiveSign must be 04xx xxx xxx (10 digits) or 4xx xxx xxx (9 digits without 0)
+    if (!/^(0?4\d{8}|0?[2378]\d{8})$/.test(digits)) {
+      return 'Please enter a valid Australian phone number (mobile starting with 04, for example 0412 345 678).';
+    }
+  }
   const rule = PHONE_DIGIT_RULES[countryCode] || DEFAULT_PHONE_RULE;
   if (digits.length < rule.min || digits.length > rule.max) {
     if (rule.min === rule.max) return `The number should be ${rule.min} digits long.`;
